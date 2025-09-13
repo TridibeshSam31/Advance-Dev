@@ -1,1 +1,0 @@
-Starting with the basic info of Prisma here as per the lecture 

@@ -1,0 +1,75 @@
+Starting with the basic info of Prisma here as per the lecture 
+
+Orms ? What are orms 
+basically Orms is a type of layer that helps in providing services similar to mongoose as we do to write our schema similarly prisma is there 
+means mongoose helps us to interact with our db for eg mongodb so its an orm 
+
+Easier to digest defination
+ORMs let you easily interact with your database without worrying too much about the underlying syntax (SQL language for eg)
+
+Why do we need ORMs?? 
+1.impler syntax (converts objects to SQL queries under the hood)
+means it provides us certain methods to interact with our db 
+
+for eg if we do not have Orm then how will be write code?
+
+const query = 'SELECT *FROM users WHERE email = $1'(sql injection prevention)
+const result = await client.query(query,("tridisam651@gmail.com"))
+
+now if we have any orm like prima then it will give us many methods for writting the similar code above in the shortest foem 
+
+User.find({
+    email:"tridibeshsam@gmail.com"
+})
+
+
+2. Abstraction that lets you flip the database you are using. Unified API irrespective of the DB
+3. Type safety/Auto completion
+type safety obv  typescript supportive and event without using ai it gives us suggestions for interaction with db 
+4.Automatic migrations
+automatic migrations means converting the current schema in some other lang for eg we can convert postgress type db to sql using migrations
+In case of a simple Postgres app, it’s very hard to keep track of all the commands that were ran that led to the current schema of the table.
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100) UNIQUE NOT NULL
+);
+
+ALTER TABLE users
+ADD COLUMN phone_number VARCHAR(15);
+
+
+as the app becomes more complex and big this makes our db very very much complex so in order to mantain it we reqiuire an orm 
+
+
+
+What is Prisma ?
+we know its an orm that is required for the connecting with our db
+
+Prisma unlocks a new level of developer experience when working with databases thanks to its intutive DATA MODEL,AUTOMATED MIGRATIONS,TYPE SAFETY AND AUTO COMPLETIONS
+SO WHAT IS DATA MODEL ?? WE know some of the termns like migrations type safety from the above discussions
+
+DATA MODEL 
+In a single file, define your schema. What it looks like, what tables you have, what field each table has, how are rows related to each other.
+
+Prisma lets you chose between a few databases (MySQL, Postgres, Mongo)
+You can update prisma/schema.prisma  to setup what database you want to use. 
+
+
+Also replace the database url with your test url for now
+
+We did all this with cloudinary saas so no need to do so all migrations are done on that project
+
+
+
+
+
+
+
+
+
+
+
+
+
