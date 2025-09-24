@@ -1,1 +1,9 @@
 //Advance Backend started 
+//basically we will learn about cloudflare and its engine
+
+What are backends servers?
+You might’ve used express to create a Backend server.
+The way to run it usually is node index.js which starts a process on a certain port (3000 for example)
+
+what to do if we want to deploy it
+
