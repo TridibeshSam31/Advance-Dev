@@ -5,5 +5,135 @@ What are backends servers?
 You might’ve used express to create a Backend server.
 The way to run it usually is node index.js which starts a process on a certain port (3000 for example)
 
-what to do if we want to deploy it
+what to do if we want to deploy it on the internet , there are a few ways for doing so
 
+1.Go to aws, GCP, Azure, Cloudflare
+Then
+Rent a VM (Virtual Machine) and deploy your app
+Put it in an Auto scaling group
+Deploy it in a Kubernetes cluster
+
+
+now there are some disadvantages of doing so 
+1.taking care of how or when to scale 
+2.Base Cost even if no one is visiting your website i.e we have to give money for hosting that website even if there are no viewers
+3.Monitoring various servers to make sure no server is down
+
+
+Agar saara code khud likhe aur koi dusra saara yeh problems ka solution kre?
+
+"Serverless" is a backend deployment in which the cloud Providor dynamically manages the allocation and provisioning of servers. The term "serverless" doesn't mean there are no servers involved. Instead, it means that developers and operators do not have to worry about the servers.
+
+In easy lang what if u could just writge ur express routes and run a command the app would automatically depoloy , autoscale , charge u on a per request basis(rather than us paying for virtual machines)
+
+But there are also some problems with this 
+1.more expensive at Scale
+2.cold start problem
+
+
+what does more expensive at scale mean ??
+For small apps: Serverless is cheaper (you pay only for requests).
+For large traffic (millions of requests/day):
+Per-request billing adds up fast.
+Running your own VMs or containers (with fixed monthly cost) might actually be cheaper.
+
+
+👉 Example:
+Serverless: $0.20 per million requests. At 100 million requests, you’re paying $20.
+A fixed VM at $10/month might handle the same load more cheaply.
+
+So:
+Low scale → cheaper + easier with serverless.
+High scale → traditional servers may win in cost.
+
+What is cold start Problem 
+Serverless doesn’t keep your code running all the time (to save money).
+Instead, when a request comes in, the platform spins up a new instance of your code.
+That “boot-up time” = cold start.
+It can add a small delay (e.g. 100ms–1s) for the first request after idle time.
+Once it’s running (“warm”), next requests are faster.
+
+
+There are many famous backend serverless providers - 
+1.AWS Lambda
+2.Google Cloud Functions
+3.Cloudflare Workers
+
+
+When should we use a serverless architecture?
+
+1.When you have to get off the ground fast and don’t want to worry about deployments
+2.When you can’t anticipate the traffic and don’t want to worry about autoscaling
+3.If you have very low traffic and want to optimise for costs
+
+Why we choosing Cloudflare ??
+No credit card required 
+
+
+Important Point
+
+Cloudflare workers DONT use the Node.js runtime. They have created their own runtime. There are a lot of things that Node.js has 
+Node.js runtime = built on V8 + libuv, with lots of APIs (like fs, net, http, child_process, etc.).
+Cloudflare Workers runtime = also built on V8, but stripped down + sandboxed, closer to the browser runtime than Node.
+
+So Workers do not run full Node.js code. Instead, they give you:
+Standard Web APIs (like fetch, Request, Response, URL).
+Special Cloudflare APIs (KV, D1, Durable Objects, R2).
+But not Node APIs (e.g., no fs, no net, no child_process, no TCP sockets).
+
+
+🔑 What Node.js has that Workers don’t
+
+Here are some common missing things:
+
+File System →
+
+Node: fs lets you read/write files.
+
+Workers: no disk access (sandboxed). You use KV, R2, or D1 for storage.
+
+TCP/UDP Networking →
+
+Node: net, dgram.
+
+Workers: only fetch for HTTP(S). No raw sockets.
+
+Process & System APIs →
+Node: process, child_process, os.
+Workers: none. You can’t spawn processes.
+Native modules / NPM packages that rely on Node APIs →
+e.g. bcrypt (native bindings), sharp (image processing).
+Workers: can only use pure JS or WebAssembly packages.
+
+
+✅ What Workers give you instead
+
+Web-standard APIs: fetch, crypto.subtle, TextEncoder/Decoder, Streams, etc.
+
+Built-in global availability (your code runs in data centers worldwide).
+
+Cloudflare-specific services:
+
+KV (key-value store)
+D1 (SQLite database)
+R2 (S3-like storage)
+Durable Objects (stateful actors)
+
+
+nstead of running on one central server (like AWS EC2, a Node.js server, or even Heroku), Workers run on Cloudflare’s Edge Network.
+
+This means:
+Your code is deployed to hundreds of data centers worldwide.
+A user in India will hit a data center in India.
+A user in Germany will hit one in Germany.
+All without you doing anything.
+Basically → your app lives “everywhere” at once.
+
+
+🚀 Benefits
+
+Low latency: Users get responses from the nearest Cloudflare location.
+Autoscaling: No servers to manage, Workers scale automatically.
+Pay per request: No paying for idle servers.
+
+ ServerlessArchitecture
