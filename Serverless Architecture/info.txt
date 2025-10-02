@@ -136,4 +136,7 @@ Low latency: Users get responses from the nearest Cloudflare location.
 Autoscaling: No servers to manage, Workers scale automatically.
 Pay per request: No paying for idle servers.
 
- ServerlessArchitecture
+code wala part thoda baad mai krunga ek last slide reh gyi hai coonction to db woh connection pooling ke saath krwayenge sirrrrr so uske baad hi krunga
+connection pooling actual me yeh hota hai ki hum apne prisma database ke saath directly connect nhi kr skte hai jaise hum ek medium ke through connection krte hai
+mtlb ki saare engine database se pehle uss medium pr connect honge then woh medium database se connect hoga so that will be a single connection
+prisma mai dikkat aati hai bahut so woh sab bhi dekheneg + prisma accelerate kyu use krte hai sab kuch dekhenge aur maine woh bloging site ka bhi project liya hai as an example of all these concepts
