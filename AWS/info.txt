@@ -1,1 +1,20 @@
 AWS NOTES HERE
+
+What AWS Actually Is ?
+
+Amazon Web Services (AWS) is a cloud computing platform that provides on-demand access to computing power, storage, and services — all pay-as-you-go.
+we can think aws as renting resource from amazon global infrastructure instead of owning physical servers
+
+Core Cloud Concepts
+basics before diving n
+| Concept                    | Meaning                                            | Example                                    |
+| -------------------------- | -------------------------------------------------- | ------------------------------------------ |
+| **On-Demand Computing**    | Rent compute or storage as needed                  | Launch EC2 instances only when required    |
+| **Scalability**            | Increase/decrease resources automatically          | Auto Scaling groups for web traffic spikes |
+| **Elasticity**             | Pay only for what you use; release when not needed | S3 charges only for stored GBs             |
+| **Fault Tolerance**        | System keeps running despite failure               | Deploy in multiple Availability Zones      |
+| **High Availability (HA)** | System stays online with minimal downtime          | Load Balancer spreads traffic              |
+| **Global Infrastructure**  | AWS has regions worldwide                          | India (ap-south-1), US East (us-east-1)    |
+
+
+we will understand these terms like ec2 ,s3 etc in deep 
