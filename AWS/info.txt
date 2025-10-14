@@ -18,3 +18,76 @@ basics before diving n
 
 
 we will understand these terms like ec2 ,s3 etc in deep 
+
+AWS Global Infrastructure
+Understand this hierarchy early — it’s critical:
+
+Region → Availability Zone (AZ) → Data Center
+Region: A geographical area (e.g., ap-south-1 = Mumbai).
+Availability Zone (AZ): Physically separate data centers within a region (usually 3).
+
+Edge Locations: For caching and CDN (used by CloudFront).
+
+💡 Best Practice: Always deploy across multiple AZs for redundancy.
+
+
+The 5 Core AWS Services we Must Know First
+| Category       | Service                      | Description                                        |
+| -------------- | ---------------------------- | -------------------------------------------------- |
+| **Compute**    | EC2                          | Virtual servers on demand                          |
+| **Storage**    | S3                           | Object storage for files, backups, static websites |
+| **Database**   | RDS                          | Managed SQL databases (MySQL, PostgreSQL, etc.)    |
+| **Networking** | VPC                          | Virtual private network for AWS resources          |
+| **IAM**        | Identity & Access Management | Securely control access and permissions            |
+
+
+These five form your foundation — everything else builds on them.
+
+IAM (Identity and Access Management)
+You’ll use this from day 1.
+Users: Individual identities.
+Groups: Collection of users.
+Roles: Temporary permissions (used by services).
+Policies: JSON documents that define permissions.
+
+⚠️ Golden Rule:
+Always follow the Principle of Least Privilege — give only the permissions a user/service needs, nothing more.
+
+6. EC2 Basics (Elastic Compute Cloud)
+
+AWS’s core compute service (virtual machines).
+You choose:
+AMI (Amazon Machine Image) → OS template
+Instance Type → CPU + RAM combo
+Storage (EBS) → Virtual disk
+Security Group → Firewall rules
+💡 Think of EC2 as your virtual server running 24/7 on AWS.
+
+S3 Basics (Simple Storage Service)
+
+Object storage — great for:
+Backups
+Static website hosting
+File sharing
+
+Key features:
+Buckets → containers for objects
+Versioning → track file changes
+Lifecycle rules → move old data to cheaper storage (like Glacier)
+
+Public access control → configure who can read/write
+
+
+
+AWS Pricing Model
+
+we pay for what we use — but know the three pricing models:
+
+| Model                  | Description                             | Example                           |
+| ---------------------- | --------------------------------------- | --------------------------------- |
+| **On-Demand**          | Pay per hour/second                     | Short-term workloads              |
+| **Reserved Instances** | Commit 1–3 years for lower cost         | Predictable workloads             |
+| **Spot Instances**     | Use unused capacity (up to 90% cheaper) | Flexible, interruptible workloads |
+
+
+
