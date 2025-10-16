@@ -142,3 +142,28 @@ mtlb ki saare engine database se pehle uss medium pr connect honge then woh medi
 prisma mai dikkat aati hai bahut so woh sab bhi dekheneg + prisma accelerate kyu use krte hai sab kuch dekhenge aur maine woh bloging site ka bhi project liya hai as an example of all these concepts
 
 
+my app wale folder mai cloudflare worker install kiya hai usme saari cheeje hai humne ek site ko bina deploy kiye run kiya hai cloudflare engine pr
+usme kaafi saari cheeje notice krne wali hai 
+ki usme express installed hi nhi hai 
+without express ke chl rha hai 
+ab hume yeh dekhna hai ki usme routing kaise krenge 
+
+
+
+Initializing a worker
+To create and deploy your application, you can take the following steps - 
+npm create cloudflare -- my-app
+Select no for Do you want to deploy your application
+Explore package.json dependencies
+"wrangler": "" //wrangler ka latest version
+Notice express is not a dependency there
+npm run dev 
+
+
+
+
+we will also get into hono a language that cloudflare used in place of express 
+its kind of easy but we will get inside it
+inorder to  create a new hono applicate we need the command npm create hono@latest
+after that hono will be installed 
+we need to know about the history of hono ? why is it req to use hono while using cloudflare whats the relattion btwn them ?????
