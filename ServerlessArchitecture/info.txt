@@ -276,3 +276,32 @@ Wrangler + Hono	Recommended combo for modern Workers
 Using hono
 What is Hono
 
+
+Hono is a lightweight, ultra-fast web framework — like Express or Fastify — but built specifically for modern runtimes such as:
+
+Cloudflare Workers
+Deno
+Bun
+Vercel Edge Functions
+AWS Lambda (via adapters)
+Think of it as “Express, but for the Edge.”
+
+Why It Exists
+
+Express was designed for Node.js, and it’s great — but Node isn’t ideal for edge or serverless environments (too heavy, slower cold starts, etc).
+Frameworks like Hono fix that by being:
+Tiny: ~2KB bundle size
+Super fast: benchmarks show it’s often faster than Express and even Fastify
+Web-standard based: uses the Request and Response objects from the Fetch API — no weird Node-specific stuff
+
+
+
+Working with cloudflare workers - 
+1.Initialize a new app
+npm create hono@latest my-app
+Move to my-app and install the dependencies.
+
+Deploying 
+Make sure you’re logged into cloudflare (wrangler login)
+
+connection pooloing tldr mai hai uska solution hai prisma accelerate 
