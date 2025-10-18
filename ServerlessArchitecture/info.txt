@@ -167,3 +167,112 @@ its kind of easy but we will get inside it
 inorder to  create a new hono applicate we need the command npm create hono@latest
 after that hono will be installed 
 we need to know about the history of hono ? why is it req to use hono while using cloudflare whats the relattion btwn them ?????
+
+
+Question - Where is the express code? HTTP Server?
+Cloudflare expects you to just write the logic to handle a request. 
+Creating an HTTP server on top is handled by cloudflare
+
+How can I do routing ? 
+
+n express, routing is done as follows - 
+import express from "express"
+const app = express();
+
+app.get("/route", (req, res) => {
+	// handles a get request to /route
+});
+
+How can you do the same in the Cloudflare environment?
+export default {
+	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+		console.log(request.body);
+		console.log(request.headers);
+		
+		if (request.method === "GET") {
+			return Response.json({
+				message: "you sent a get request"
+			});
+		} else {
+			return Response.json({
+				message: "you did not send a get request"
+			});
+		}
+	},
+}; yeh kaafi basic sa hi next ke project  mai use kiya tha
+
+Cloudflare does not expect a routing library/http server out of the box. You can write a full application with just the constructs available above.
+ 
+We will eventually see how you can use other HTTP frameworks (like express) in cloudflare workers.
+
+
+If you’re using Cloudflare Pages (Free plan)
+
+You can assign a custom domain for free.
+You do not need to buy a paid Cloudflare plan.
+However, there are two conditions:
+You must own the domain (from any registrar — GoDaddy, Namecheap, Google Domains, etc.).
+You must point that domain’s nameservers to Cloudflare (so Cloudflare can manage DNS).
+That’s it.
+
+✅ You can:
+
+Use your own domain (myapp.com)
+Add it to your Cloudflare account
+Point it to your Pages site (e.g., myapp.pages.dev)
+💡 You don’t have to buy the domain from Cloudflare — transferring it is optional.
+
+
+🔹 If you’re using Cloudflare Workers + Pages (Pro or higher)
+Only in this case (for custom Workers routes like api.myapp.com or KV namespaces tied to a domain) might you need a paid plan if:
+You’re exceeding free limits,
+Or you want Custom Domains on Workers (not Pages).
+But if your goal is to host a Next.js frontend (e.g., via Pages) with a custom domain, it’s 100% free.
+
+
+🔹 If you’re using Vercel
+Different story — you can also add custom domains for free, but SSL and edge functions are limited on the Hobby plan.
+
+
+
+Adding express to it
+Why can’t we use express? Why does it cloudflare doesn’t start off with a simple express boiler 
+
+Cloudflare’s platform (Workers, Pages Functions, etc.) doesn’t run on Node.js.
+It runs on a V8 isolate runtime — the same JavaScript engine that powers Chrome and Deno.
+
+
+xpress is built around Node.js core APIs like:
+import http from 'http'
+import fs from 'fs'
+
+Cloudflare’s runtime doesn’t expose those.
+So express() literally can’t run — it has nowhere to attach an HTTP listener.
+
+
+💡 Why Cloudflare Chose Not to Start with Express
+
+Cloudflare intentionally avoided the Node.js model because:
+
+Performance: Each request spins up a micro-isolate (~1–2 ms cold start).
+Express/Node servers are heavy and persistent.Security: No local file system or open TCP ports → fewer attack surfaces.
+Scalability: Cloudflare runs code globally at edge nodes — stateless, fast.
+Cost: Running full Node per request across 300+ PoPs would be insanely expensive.
+In short — Express = “a server inside your app.”
+Cloudflare = “your code runs inside their global server.”
+
+
+🧩 The Alternative: Express-like Frameworks for Cloudflare
+
+Since devs love Express, some projects re-create that style for Workers:
+
+	
+Hono -Tiny, super-fast, Express-like API (app.get('/route', ...))
+itty-router	Minimal router, very lightweight
+Worktop	-Older but good structured Worker routing
+Wrangler + Hono	Recommended combo for modern Workers
+
+
+Using hono
+What is Hono
+
