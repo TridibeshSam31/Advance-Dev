@@ -1,0 +1,24 @@
+//starting now 
+
+there was a blog post related to  this that suppose we are using  prisma orm in a certain project and we have to deploy it on cloudflare
+(serverless) so what does in actual prisma expects us to do 
+
+basically it want us that when we are using cloudfare for deploying the project it want us not to connect directly with a database 
+why not to do that whats the error in that ???
+
+what prisma whats is that , since there are multiple workers in cloudfare when they will connect to the database it will create load on the database
+so what it wants that all the workers send request to a single place(connection pool) ahd then that single place(pool) will connect to our datavbase
+ 
+This will not create multiple connections to aur database and there will be a single connection
+
+In the docs there were words like edge servers they are nothing it is means serverless only 
+
+
+prisma wants us to use prisma accelerate in order to deploy a project to cloudflare 
+for that read the docs and set up prisma accelerate 
+
+
+
+I did the same thing and started an cloudflare applicartion connectionpool 
+
+

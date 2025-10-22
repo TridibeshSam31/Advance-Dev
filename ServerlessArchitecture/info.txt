@@ -1,0 +1,307 @@
+//Advance Backend started 
+//basically we will learn about cloudflare and its engine
+
+What are backends servers?
+You might’ve used express to create a Backend server.
+The way to run it usually is node index.js which starts a process on a certain port (3000 for example)
+
+what to do if we want to deploy it on the internet , there are a few ways for doing so
+
+1.Go to aws, GCP, Azure, Cloudflare
+Then
+Rent a VM (Virtual Machine) and deploy your app
+Put it in an Auto scaling group
+Deploy it in a Kubernetes cluster
+
+
+now there are some disadvantages of doing so 
+1.taking care of how or when to scale 
+2.Base Cost even if no one is visiting your website i.e we have to give money for hosting that website even if there are no viewers
+3.Monitoring various servers to make sure no server is down
+
+
+Agar saara code khud likhe aur koi dusra saara yeh problems ka solution kre?
+
+"Serverless" is a backend deployment in which the cloud Providor dynamically manages the allocation and provisioning of servers. The term "serverless" doesn't mean there are no servers involved. Instead, it means that developers and operators do not have to worry about the servers.
+
+In easy lang what if u could just writge ur express routes and run a command the app would automatically depoloy , autoscale , charge u on a per request basis(rather than us paying for virtual machines)
+
+But there are also some problems with this 
+1.more expensive at Scale
+2.cold start problem
+
+
+what does more expensive at scale mean ??
+For small apps: Serverless is cheaper (you pay only for requests).
+For large traffic (millions of requests/day):
+Per-request billing adds up fast.
+Running your own VMs or containers (with fixed monthly cost) might actually be cheaper.
+
+
+👉 Example:
+Serverless: $0.20 per million requests. At 100 million requests, you’re paying $20.
+A fixed VM at $10/month might handle the same load more cheaply.
+
+So:
+Low scale → cheaper + easier with serverless.
+High scale → traditional servers may win in cost.
+
+What is cold start Problem 
+Serverless doesn’t keep your code running all the time (to save money).
+Instead, when a request comes in, the platform spins up a new instance of your code.
+That “boot-up time” = cold start.
+It can add a small delay (e.g. 100ms–1s) for the first request after idle time.
+Once it’s running (“warm”), next requests are faster.
+
+
+There are many famous backend serverless providers - 
+1.AWS Lambda
+2.Google Cloud Functions
+3.Cloudflare Workers
+
+
+When should we use a serverless architecture?
+
+1.When you have to get off the ground fast and don’t want to worry about deployments
+2.When you can’t anticipate the traffic and don’t want to worry about autoscaling
+3.If you have very low traffic and want to optimise for costs
+
+Why we choosing Cloudflare ??
+No credit card required 
+
+
+Important Point
+
+Cloudflare workers DONT use the Node.js runtime. They have created their own runtime. There are a lot of things that Node.js has 
+Node.js runtime = built on V8 + libuv, with lots of APIs (like fs, net, http, child_process, etc.).
+Cloudflare Workers runtime = also built on V8, but stripped down + sandboxed, closer to the browser runtime than Node.
+
+So Workers do not run full Node.js code. Instead, they give you:
+Standard Web APIs (like fetch, Request, Response, URL).
+Special Cloudflare APIs (KV, D1, Durable Objects, R2).
+But not Node APIs (e.g., no fs, no net, no child_process, no TCP sockets).
+
+
+🔑 What Node.js has that Workers don’t
+
+Here are some common missing things:
+
+File System →
+
+Node: fs lets you read/write files.
+
+Workers: no disk access (sandboxed). You use KV, R2, or D1 for storage.
+
+TCP/UDP Networking →
+
+Node: net, dgram.
+
+Workers: only fetch for HTTP(S). No raw sockets.
+
+Process & System APIs →
+Node: process, child_process, os.
+Workers: none. You can’t spawn processes.
+Native modules / NPM packages that rely on Node APIs →
+e.g. bcrypt (native bindings), sharp (image processing).
+Workers: can only use pure JS or WebAssembly packages.
+
+
+✅ What Workers give you instead
+
+Web-standard APIs: fetch, crypto.subtle, TextEncoder/Decoder, Streams, etc.
+
+Built-in global availability (your code runs in data centers worldwide).
+
+Cloudflare-specific services:
+
+KV (key-value store)
+D1 (SQLite database)
+R2 (S3-like storage)
+Durable Objects (stateful actors)
+
+
+nstead of running on one central server (like AWS EC2, a Node.js server, or even Heroku), Workers run on Cloudflare’s Edge Network.
+
+This means:
+Your code is deployed to hundreds of data centers worldwide.
+A user in India will hit a data center in India.
+A user in Germany will hit one in Germany.
+All without you doing anything.
+Basically → your app lives “everywhere” at once.
+
+
+🚀 Benefits
+
+Low latency: Users get responses from the nearest Cloudflare location.
+Autoscaling: No servers to manage, Workers scale automatically.
+Pay per request: No paying for idle servers.
+
+code wala part thoda baad mai krunga ek last slide reh gyi hai coonction to db woh connection pooling ke saath krwayenge sirrrrr so uske baad hi krunga
+connection pooling actual me yeh hota hai ki hum apne prisma database ke saath directly connect nhi kr skte hai jaise hum ek medium ke through connection krte hai
+mtlb ki saare engine database se pehle uss medium pr connect honge then woh medium database se connect hoga so that will be a single connection
+prisma mai dikkat aati hai bahut so woh sab bhi dekheneg + prisma accelerate kyu use krte hai sab kuch dekhenge aur maine woh bloging site ka bhi project liya hai as an example of all these concepts
+
+
+my app wale folder mai cloudflare worker install kiya hai usme saari cheeje hai humne ek site ko bina deploy kiye run kiya hai cloudflare engine pr
+usme kaafi saari cheeje notice krne wali hai 
+ki usme express installed hi nhi hai 
+without express ke chl rha hai 
+ab hume yeh dekhna hai ki usme routing kaise krenge 
+
+
+
+Initializing a worker
+To create and deploy your application, you can take the following steps - 
+npm create cloudflare -- my-app
+Select no for Do you want to deploy your application
+Explore package.json dependencies
+"wrangler": "" //wrangler ka latest version
+Notice express is not a dependency there
+npm run dev 
+
+
+
+
+we will also get into hono a language that cloudflare used in place of express 
+its kind of easy but we will get inside it
+inorder to  create a new hono applicate we need the command npm create hono@latest
+after that hono will be installed 
+we need to know about the history of hono ? why is it req to use hono while using cloudflare whats the relattion btwn them ?????
+
+
+Question - Where is the express code? HTTP Server?
+Cloudflare expects you to just write the logic to handle a request. 
+Creating an HTTP server on top is handled by cloudflare
+
+How can I do routing ? 
+
+n express, routing is done as follows - 
+import express from "express"
+const app = express();
+
+app.get("/route", (req, res) => {
+	// handles a get request to /route
+});
+
+How can you do the same in the Cloudflare environment?
+export default {
+	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+		console.log(request.body);
+		console.log(request.headers);
+		
+		if (request.method === "GET") {
+			return Response.json({
+				message: "you sent a get request"
+			});
+		} else {
+			return Response.json({
+				message: "you did not send a get request"
+			});
+		}
+	},
+}; yeh kaafi basic sa hi next ke project  mai use kiya tha
+
+Cloudflare does not expect a routing library/http server out of the box. You can write a full application with just the constructs available above.
+ 
+We will eventually see how you can use other HTTP frameworks (like express) in cloudflare workers.
+
+
+If you’re using Cloudflare Pages (Free plan)
+
+You can assign a custom domain for free.
+You do not need to buy a paid Cloudflare plan.
+However, there are two conditions:
+You must own the domain (from any registrar — GoDaddy, Namecheap, Google Domains, etc.).
+You must point that domain’s nameservers to Cloudflare (so Cloudflare can manage DNS).
+That’s it.
+
+✅ You can:
+
+Use your own domain (myapp.com)
+Add it to your Cloudflare account
+Point it to your Pages site (e.g., myapp.pages.dev)
+💡 You don’t have to buy the domain from Cloudflare — transferring it is optional.
+
+
+🔹 If you’re using Cloudflare Workers + Pages (Pro or higher)
+Only in this case (for custom Workers routes like api.myapp.com or KV namespaces tied to a domain) might you need a paid plan if:
+You’re exceeding free limits,
+Or you want Custom Domains on Workers (not Pages).
+But if your goal is to host a Next.js frontend (e.g., via Pages) with a custom domain, it’s 100% free.
+
+
+🔹 If you’re using Vercel
+Different story — you can also add custom domains for free, but SSL and edge functions are limited on the Hobby plan.
+
+
+
+Adding express to it
+Why can’t we use express? Why does it cloudflare doesn’t start off with a simple express boiler 
+
+Cloudflare’s platform (Workers, Pages Functions, etc.) doesn’t run on Node.js.
+It runs on a V8 isolate runtime — the same JavaScript engine that powers Chrome and Deno.
+
+
+xpress is built around Node.js core APIs like:
+import http from 'http'
+import fs from 'fs'
+
+Cloudflare’s runtime doesn’t expose those.
+So express() literally can’t run — it has nowhere to attach an HTTP listener.
+
+
+💡 Why Cloudflare Chose Not to Start with Express
+
+Cloudflare intentionally avoided the Node.js model because:
+
+Performance: Each request spins up a micro-isolate (~1–2 ms cold start).
+Express/Node servers are heavy and persistent.Security: No local file system or open TCP ports → fewer attack surfaces.
+Scalability: Cloudflare runs code globally at edge nodes — stateless, fast.
+Cost: Running full Node per request across 300+ PoPs would be insanely expensive.
+In short — Express = “a server inside your app.”
+Cloudflare = “your code runs inside their global server.”
+
+
+🧩 The Alternative: Express-like Frameworks for Cloudflare
+
+Since devs love Express, some projects re-create that style for Workers:
+
+	
+Hono -Tiny, super-fast, Express-like API (app.get('/route', ...))
+itty-router	Minimal router, very lightweight
+Worktop	-Older but good structured Worker routing
+Wrangler + Hono	Recommended combo for modern Workers
+
+
+Using hono
+What is Hono
+
+
+Hono is a lightweight, ultra-fast web framework — like Express or Fastify — but built specifically for modern runtimes such as:
+
+Cloudflare Workers
+Deno
+Bun
+Vercel Edge Functions
+AWS Lambda (via adapters)
+Think of it as “Express, but for the Edge.”
+
+Why It Exists
+
+Express was designed for Node.js, and it’s great — but Node isn’t ideal for edge or serverless environments (too heavy, slower cold starts, etc).
+Frameworks like Hono fix that by being:
+Tiny: ~2KB bundle size
+Super fast: benchmarks show it’s often faster than Express and even Fastify
+Web-standard based: uses the Request and Response objects from the Fetch API — no weird Node-specific stuff
+
+
+
+Working with cloudflare workers - 
+1.Initialize a new app
+npm create hono@latest my-app
+Move to my-app and install the dependencies.
+
+Deploying 
+Make sure you’re logged into cloudflare (wrangler login)
+
+connection pooloing tldr mai hai uska solution hai prisma accelerate 
