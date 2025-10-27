@@ -1,3 +1,4 @@
+//node.js code for transactions in sql
 import { Client } from 'pg';
 
 async function insertUserAndAddress(
