@@ -1,1 +1,129 @@
-completed upload notes soon 
+Relationships and Transactions
+
+Relationships let you store data in different tables and relate it with each other.
+
+Relationships in mongodb
+Since mongodb is a NoSQL database, you can store any shape of data in it. 
+If I ask you to store a users details along with their address, you can store it in an object that has the address details.
+
+address:object
+{
+street:""
+city:""
+country:'"
+pincode:""
+}
+
+Relationships in SQL
+Since SQL can not store objects as such, we need to define two different tables to store this data in.
+Its explainantion is there in tldraw 
+
+
+Transactions In SQL(imp)
+
+when we are dealing with transactions using sql we want it to be simultaneous i.e if someone send 50 to ur accound our asccount balkance should be increased by 50 and the user account balance should be decreased by 50 so this must be similtaneous
+there should be no time gap in btwn these process so in order to carry out these operations we write sql querys in such  a way that if one process is completed then the other one is carried out 
+
+
+
+
+
+BEGIN; -- Start transaction
+
+INSERT INTO users (username, email, password)
+VALUES ('john_doe', 'john_doe1@example.com', 'securepassword123');
+
+INSERT INTO addresses (user_id, city, country, street, pincode)
+VALUES (currval('users_id_seq'), 'New York', 'USA', '123 Broadway St', '10001');
+
+COMMIT;
+
+
+one of the important thing to notice here is that if u will see after the insert command the table will not be updated because untill unless we write commit in this query is incomplete
+
+
+
+
+
+
+
+
+JOINS In SQL 
+Defining relationships is easy.
+What’s hard is joining  data from two (or more) tables together.
+
+purpose of joins is to join two data whether they are related or not a combine data 
+
+
+For example, if I ask you to fetch me a users details and  their address
+
+Approach 1
+Fetch user's details
+SELECT id, username, email
+FROM users
+WHERE id = YOUR_USER_ID;
+
+Fetch user's address
+SELECT city, country, street, pincode
+FROM addresses
+WHERE user_id = YOUR_USER_ID;
+
+Approach 2
+SELECT users.id, users.username, users.email, addresses.city, addresses.country, addresses.street, addresses.pincode
+FROM users
+JOIN addresses ON users.id = addresses.user_id
+WHERE users.id = '1';
+
+Benefits of using a join - 
+1.Reduced Latency
+2.Simplified Application Logic
+3.Transactional Integrity
+
+Types of Joins
+
+1.INNER JOIN
+Returns rows when there is at least one match in both tables. If there is no match, the rows are not returned. It's the most common type of join.
+
+It is similar to normal join 
+
+
+Find All Users With Their Addresses. If a user hasn’t filled their address, that user shouldn’t be returned
+SELECT users.username, addresses.city, addresses.country, addresses.street, addresses.pincode
+FROM users
+INNER JOIN addresses ON users.id = addresses.user_id;
+
+2. LEFT JOIN
+Returns all rows from the left table, and the matched rows from the right table.
+Use case - To list all users from your database along with their address information (if they've provided it), you'd use a LEFT JOIN. Users without an address will still appear in your query result, but the address fields will be NULL for them.
+
+SELECT users.username, addresses.city, addresses.country, addresses.street, addresses.pincode
+FROM users
+LEFT JOIN addresses ON users.id = addresses.user_id;
+
+3. RIGHT JOIN
+Returns all rows from the right table, and the matched rows from the left table.
+Use case - Given the structure of the database, a RIGHT JOIN would be less common since the addresses table is unlikely to have entries not linked to a user due to the foreign key constraint. However, if you had a situation where you start with the addresses table and optionally include user information, this would be the theoretical use case.
+
+
+SELECT users.username, addresses.city, addresses.country, addresses.street, addresses.pincode
+FROM users
+RIGHT JOIN addresses ON users.id = addresses.user_id;
+
+
+4. FULL JOIN
+Returns rows when there is a match in one of the tables. It effectively combines the results of both LEFT JOIN and RIGHT JOIN.
+Use case - A FULL JOIN would combine all records from both users and addresses, showing the relationship where it exists. Given the constraints, this might not be as relevant because every address should be linked to a user, but if there were somehow orphaned records on either side, this query would reveal them.
+
+FULL JOIN Bs YAHI HAI KI CHAHE RELATION HO YA NA HO BAS MUJHE COLLECTIVE DATA CHAITYE
+MTLB AGAR USER TABLE AUR ADDRESS TABLE KE BEECH MAI KOI RELATION NA BHI HO TAB BHI JOIN KRKE MUJHE CONNECTIVE DATA CHAITYE
+
+SELECT users.username, addresses.city, addresses.country, addresses.street, addresses.pincode
+FROM users
+FULL JOIN addresses ON users.id = addresses.user_id;
+
+
+
+
+
+
+COMPLETED
