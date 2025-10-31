@@ -397,11 +397,36 @@ So there are 4 parts when using an SQL database (not connecting it to Node.js, j
 4.Run queries on the database to interact with the data (Insert/Update/Delete)
 
 
+Creating  A database 
+You can start a Potgres database in a few ways - 
+1.using Neondb
+2.using docker locally
+3.using docker on windows
+
+If we are using docker locally we will run the command
+docker run --name my-postgres -e POSTGRES_PASSWORD=mysecretpassword -d -p 5432:5432 postgres
+
+and then the connection string
+postgresql://postgres:mysecretpassword@localhost:5432/postgres?sslmode=disable
+
+Using docker on windows
+How to run postgrSQL in windows terminal(if you have docker installed).
+- fist run docker gui application that help in running commands in terminal.
+- After that run it with the docker instance by the help of following command .
+-- for the first time if the image is not downloaded .
+-- docker run --name my-postgres1 -e POSTGRES_PASSWORD=mysecretpassword -d -p 5432:5432 postgres.
+-- if the docker image is there, prior to use the it can simply be runned by docker run <image name>.
+- After that ,
+-- use docker exec -it my-postgres1 psql -U postgres -d postgres this command in terminal .
+-- then enter the password and it will connect to localhost Postgress instance .
+-- now you will be inside the postress command line that looks like postgres-#  .
+- U can check it by running \\dt , (the command to display all the tables.)
 
 I am running the prostgress commands using  docker windows 
+
 so going to the next step
 
-Using a library that let’s you connect and put data in it.
+Using a library that let’s you connect and put data in it.Note this is needed only if we are not using docker if we are using docker then it's not needed because docker already contains it
 1.psql
 psql is a terminal-based front-end to PostgreSQL. It provides an interactive command-line interface to the PostgreSQL (or TimescaleDB) database. With psql, you can type in queries interactively, issue them to PostgreSQL, and see the query results.
 
