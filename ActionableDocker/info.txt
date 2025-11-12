@@ -2,7 +2,7 @@ why do we need docker ???
 What are containers??
 what was hyperwiser if that was working good why we introduced docker ??
 what are images in docker ??
-what are GUI ?? 
+
 
 
 
@@ -275,3 +275,134 @@ Same environment from dev → prod.
 | **Performance**     | Lower                               | Near-native                         |
 | **Scalability**     | Harder                              | Extremely easy                      |
 | **Use case**        | Run multiple OSes, strong isolation | Deploy apps quickly and efficiently |
+
+
+
+
+what are Images in Docker
+A Docker image is a read-only blueprint that contains everything needed to run your app — code, runtime, libraries, and configuration. Containers are live, running instances of those images.
+
+
+An image = the frozen snapshot of everything your app needs
+A container = the running instance of that image
+
+You build an image once, and then you can run it multiple times as many identical containers as you want.
+
+Example
+Let’s say you have a simple Node.js app.
+
+You write a Dockerfile (this is like a step-by-step instruction list):
+FROM node:18
+WORKDIR /app
+COPY . .
+RUN npm install
+CMD ["npm", "start"]
+
+Now you build an image:
+docker build -t myapp:1.0 . This command creates a Docker image named myapp with version 1.0.
+
+docker run myapp:1.0
+Docker takes that image and starts a container (a live, isolated copy) from it.
+
+
+⚙️ What’s Inside an Image?
+
+A Docker image contains:
+The base OS layer (like Ubuntu, Alpine, or Debian)
+The runtime (Node, Python, Java, etc.)
+Your application code
+Dependencies (libraries, configs, binaries)
+A default command (what to run when the container starts)
+
+
+Images Are Layered (This Is the Magic Part)
+
+Docker images are made of layers, and that’s why they’re super-efficient.
+Example from the above Dockerfile:
+
+FROM node:18 → base layer (Node image)
+WORKDIR /app → new layer
+COPY . . → new layer
+RUN npm install → new layer
+CMD ["npm", "start"] → metadata layer
+
+If you rebuild the image after changing only your code,
+Docker reuses the cached layers (Node, dependencies, etc.) — it only rebuilds what changed.
+
+That’s why Docker builds are fast and space-efficient.
+
+
+
+
+
+Base Images
+
+Images can start from another image.
+Examples:
+
+FROM ubuntu:22.04
+FROM node:18
+FROM python:3.11
+FROM scratch → completely empty (used for minimal binaries)
+
+Each one provides a foundation your app builds on.
+
+
+
+Where Do Images Live?
+
+Docker images are stored in registries — basically cloud storage for images.
+
+Popular ones:
+
+Docker Hub (default)
+GitHub Container Registry
+AWS ECR / Google GCR / Azure ACR
+Private registries (for companies)
+
+
+When you run:
+docker pull node:18
+You’re downloading a pre-built image from Docker Hub.
+
+
+
+
+
+
+BASIC DOCKER COMMANDS 
+docker run
+docker ps-THIS WILL SHOW US ALL THE CONTAINERS THAT ARE Running
+
+docker kill-THIS WILL KILL THE CONTAINER BUT YES U WILL HAVE TO PROVIDE CONTAINER ID 
+
+
+Running an image
+here we will see the common errors
+
+suppose I run a simple mongo image
+docker run mongo
+
+u will notice that u can't open It in mongo compass
+
+why??
+Because u haven't added port mapping to it
+
+docker run  -p 27017:27017 mongo
+
+Starting in detached mode
+Adding -d will ensure it starts in the background
+docker run -d -p 27017:27017 mongo
+
+
+lets run a postgres application so 
+docker run -e POSTGRES_PASSWORD=mysecretpassword -d -p 5432:5432 postgres
+
+now from this we can see that the connection string would be 
+postgresql://postgres:mysecretpassword@localhost:5432/postgres
+
+
+
+
+
+
