@@ -1,0 +1,6 @@
+next js depth 
+what is the need of this nextjs 
+can nextjs optimize the seo and react cannot 
+what is the difference in using nextjs and rfeact aother than server side rendering etc
+what is caching in nextjs 
+Is caching there in react 
