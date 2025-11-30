@@ -1,0 +1,233 @@
+How the internet and the web actually work??
+
+
+1.Internet vs World Wide Web (WWW)
+Short idea:
+Internet = the physical and logical network that connects computers worldwide (wires, fiber, routers, IPs).
+World Wide Web (WWW) = one service that runs on top of the Internet — it's the system of web pages you access with HTTP.
+
+Analogy:
+
+Internet = the global postal system (roads, post offices, trucks).
+Web = letters and magazines that ride on that system (websites using HTTP).
+
+Devices/hosts: laptops, phones, servers. Each has an IP address (like a street address).
+Networks & ISPs: connect hosts; your ISP is the gateway to other networks.
+Routers: devices that forward traffic between networks (like intersections/signposts).
+Switches & NICs: local network devices - connecting devices within one local network.
+Protocols: rules for talking (we’ll get into TCP, IP, HTTP, TLS, UDP).
+
+How data flows (simple):
+
+App (your browser) creates a message (request).
+Transport layer (TCP or UDP) breaks it into segments, adds headers.
+Network layer (IP) wraps segments into packets with source/destination IP.
+Link layer sends frames across physical medium to the next hop (router).
+Routers forward packets until they reach destination; destination reassembles.
+
+Layers to remember (practical stack):
+Application (HTTP, DNS)
+Transport (TCP, UDP)
+Network (IP)
+Link/Physical (Ethernet, Wi-Fi, fiber)
+
+
+
+2. DNS — Domain Name System (the Internet’s phonebook)
+What problem DNS solves: Humans prefer names (example.com). Computers use IPs (e.g., 93.184.216.34). DNS maps names → IPs.
+
+How simple DNS resolution works (step-by-step):
+
+You type example.com → browser asks OS resolver.
+Local cache / OS: if cached, return immediately.
+Recursive resolver (your ISP or public DNS): the resolver will perform the work if it doesn't have the answer.
+Root servers: resolver asks root (".") servers for the location of the top-level domain (TLD) servers (e.g., .com).
+TLD servers: reply with authoritative name servers for example.com.
+Authoritative DNS server: returns the A/AAAA record (IP).
+Resolver caches the result (for TTL) and returns IP to your machine.
+
+Types of common DNS records:
+
+A — IPv4 address (example.com → 93.184.216.34)
+AAAA — IPv6 address
+CNAME — alias of another domain (www.example
+ → example.com)
+MX — mail exchange (for email)
+TXT — arbitrary text (used for verification, SPF, etc.)
+TTL — Time to Live: how long resolvers cache an answer.
+
+Practical commands to try:
+
+ping example.com — shows IP (and checks reachability).
+nslookup example.com or dig example.com — shows DNS records and nameservers.
+
+3.Server-Client Architecture (how web apps are organized)
+
+Client-server model:
+
+Client = requests services (browser, mobile app).
+Server = provides services and resources (web server software like Apache, Nginx, or an app server you write).
+
+HTTP request/response cycle:
+
+Client opens connection to server (often TCP port 80 for HTTP or 443 for HTTPS).
+Client sends an HTTP request (method, path, headers, body).
+Server sends back an HTTP response (status code, headers, body).
+Connection may be closed or reused (keep-alive).
+
+
+What a request looks like (example):
+GET /index.html HTTP/1.1
+Host: example.com
+User-Agent: Mozilla/5.0
+Accept: text/html
+
+Response example:
+HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 1256
+
+<html>...page HTML...</html>
+
+
+Web servers and roles:
+
+Static server: serves files (HTML, CSS, JS).
+Application server: runs code (Node, Django) to build responses, interact with DB.
+Reverse proxy (Nginx): sits in front of app servers for load balancing, SSL offload, caching.
+
+HTTP status code basics:
+200 OK, 301/302 redirection, 404 Not Found, 500 Server error.
+
+
+4. Internet Protocols — TCP/IP and UDP (the transport decision)
+
+4.1 TCP/IP — Transmission Control Protocol / Internet Protocol
+IP (Internet Protocol): routes packets across networks. IP gives each device an address and handles packet delivery (best-effort; no guarantee of arrival/order).
+
+TCP (Transmission Control Protocol): built on IP, provides:
+
+Reliable delivery: retransmits lost segments.
+Ordered delivery: ensures data arrives in order.
+Flow control & congestion control: prevents overwhelming receiver or the network.
+
+Key TCP concepts:
+
+Ports: number identifying a service on host (HTTP = 80, HTTPS = 443, SSH = 22). Combined with IP makes a socket: IP:port.
+Sequence numbers: order segments and allow ACKs.
+ACKs (acknowledgements): receiver confirms received data.
+Retransmission: if ACK not received in time, sender retransmits.
+Window size: how much unACKed data can be in flight (flow control).
+
+4.2 UDP — User Datagram Protocol
+
+UDP is simpler:
+
+Connectionless: no handshake, no stateful connection.
+Unreliable: packets may be lost or arrive out of order; no retransmission done by UDP.
+Lightweight / low overhead: faster when you don’t need reliability (e.g., real-time video, DNS queries, gaming).
+When to use UDP: low-latency streaming, VoIP, DNS queries, where occasional loss is acceptable or reliability handled at application level.
+
+Comparison summary:
+
+TCP = reliable, ordered, connection-oriented, heavier overhead.
+UDP = fast, simple, connectionless, no built-in reliability.
+
+
+5. TCP 3-way handshake (what actually creates a TCP connection)
+
+Why handshake? To establish a reliable connection and synchronize sequence numbers.
+
+Three steps (with flags):
+
+Client → Server: SYN (synchronize) — client sends initial sequence number x.
+Server → Client: SYN-ACK — server replies with its own sequence number y and acknowledges x (ACK x+1).
+Client → Server: ACK — client acknowledges y (ACK y+1). Connection established.
+
+Why sequence numbers? They let TCP:
+
+Reassemble data in order.
+Detect lost or duplicate segments.
+After handshake: data segments flow with sequence numbers and ACKs. If a segment is lost, the receiver won’t ACK it; sender retransmits.
+Tear-down (closing connection): uses FIN and ACK flags (a few steps).
+Practical check: run tcpdump or Wireshark and filter for tcp.flags.syn == 1 to see SYN packets. (Requires admin tools.)
+
+
+6. HTTP & HTTPS (how web pages are requested and secured)
+HTTP (HyperText Transfer Protocol)
+Application-layer protocol used by web browsers and servers.
+Methods: common ones are GET (read), POST (submit), PUT, DELETE.
+Headers: metadata (User-Agent, Accept, Content-Type, Cookie).
+Stateless: each request is independent (cookies/sessions handle state).
+
+Common headers example:
+
+Content-Type: tells server/client the data type.
+Cookie: stores session tokens.
+Authorization: for bearer tokens / basic auth.
+HTTPS — secure HTTP
+HTTPS = HTTP over TLS (Transport Layer Security).
+Encrypts data between client and server to prevent eavesdropping and tampering.
+Uses certificates issued by Certificate Authorities (CA) to verify server identity.
+
+TLS handshake simplified:
+
+Client hello (supported TLS versions, cipher suites).
+Server hello (chosen cipher, certificate).
+Client verifies certificate (chain checks), then sends a pre-master secret (encrypted with server public key) or uses key-exchange like ECDHE.
+Both derive symmetric keys and start encrypted communication.
+
+Why HTTPS matters:
+
+Prevents snooping (no plain-text passwords).
+Prevents tampering (integrity).
+Confirms server identity (authenticity).
+
+HTTP/1.1 vs HTTP/2 vs HTTP/3 (short):
+
+HTTP/1.1: text-based, multiple connections often needed.
+HTTP/2: binary framing, multiplexing many requests over one connection (faster).
+HTTP/3: uses QUIC (runs over UDP) for even lower latency and faster connection establishment.
+
+
+
+7. Practical examples & commands you can run (hands-on)
+
+1. See the IP behind a domain
+ping example.com
+dig example.com A or nslookup example.com
+
+2. Make an HTTP request
+
+curl -i http://example.com (shows headers and body)
+curl -I https://example.com (fetch headers only)
+
+3. Test an HTTPS connection and certificate
+
+openssl s_client -connect example.com:443 (shows certificate chain, TLS handshake info)
+
+4. Inspect TCP handshake (simple)
+
+Use Wireshark or tcpdump (requires privilege):
+sudo tcpdump -i any tcp and host example.com and port 80 — watch SYN, SYN-ACK, ACK.
+
+5. Quick DNS resolution trace
+
+dig +trace example.com — shows how resolver goes from root to authoritative.
+
+8. Common pitfalls and things beginners misunderstand
+
+IP vs Domain: IPs change (load balancers); domains point to services — that’s why DNS exists.
+
+HTTP is not secure: without HTTPS anyone on the path can read or tamper the content.
+TCP reliability costs time: it prioritizes correctness over raw speed; UDP trades reliability for speed.
+Ports ≠ protocols: port 80 usually means HTTP, but you can run any protocol on any port — it’s convention, not a rule.
+Firewall/NAT effects: NAT changes private IPs inside your network to a public IP; can complicate direct peer-to-peer connections.
+
+9. Concrete study plan (if you want to learn deeply, step-by-step)
+
+Basics (1–2 days): Learn IP vs domain, ping, traceroute, why routers exist. Play with ping, traceroute, dig.
+DNS deep dive (2–3 days): Practice dig +trace, examine A/CNAME/MX. Make a small DNS zone if you can (or use a DNS provider UI).
+TCP/UDP (3–4 days): Read about sequence numbers, windows, retransmission. Use Wireshark to capture TCP handshakes.
+HTTP & HTTPS (3–5 days): Use curl to send requests, examine headers, learn status codes. Explore TLS with openssl s_client.
+
