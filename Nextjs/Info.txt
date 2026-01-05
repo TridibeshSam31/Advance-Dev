@@ -9,3 +9,4 @@ Is caching there in react
 
 
 NextJS was a framework that was introduced because of some minor inconviniences in React
+completed adding notes 
