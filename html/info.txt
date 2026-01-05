@@ -1,0 +1,265 @@
+HTML is not a programming language.
+It’s a markup language that describes structure, meaning, and relationships of content.
+
+
+HTML does four critical jobs:
+
+Defines document structure
+Provides semantic meaning
+Enables accessibility
+Connects with CSS, JS, SEO, and browsers
+
+
+Anatomy of an HTML Tag
+<tagname attribute="value">content</tagname>
+
+Types of tags
+1.Paired tags
+<p>Hello</p>
+
+2.Void / self-closing tags
+<img />
+<input />
+<br />
+
+
+3.Global Attributes (MOST IMPORTANT — Learn Once, Use Everywhere)
+These work on almost every element.
+
+Some of the core global Attributes
+| Attribute         | Why it matters                             |
+| ----------------- | ------------------------------------------ |
+| `id`              | Unique identifier (CSS, JS, accessibility) |
+| `class`           | Grouping + styling                         |
+| `style`           | Inline CSS (use sparingly)                 |
+| `title`           | Tooltip + accessibility                    |
+| `hidden`          | Removes element from layout                |
+| `tabindex`        | Keyboard navigation                        |
+| `contenteditable` | Editable content                           |
+| `draggable`       | Drag & drop                                |
+| `spellcheck`      | Text validation                            |
+
+
+Data Attributes (VERY IMPORTANT)
+<button data-user-id="42">Click</button>
+
+Access in JS:
+element.dataset.userId
+
+
+Document Structure Tags (Non-Negotiable)
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  </head>
+  <body>
+  </body>
+</html>
+
+
+<head> essentials
+| Tag                      | Purpose           |
+| ------------------------ | ----------------- |
+| `<meta charset="UTF-8">` | Encoding          |
+| `<meta name="viewport">` | Responsive design |
+| `<title>`                | SEO + tabs        |
+| `<link>`                 | CSS, icons        |
+| `<script>`               | JS                |
+
+
+Missing viewport = broken mobile UI.(Important)
+
+5. Semantic Tags
+
+
+Common Semantic Tags
+| Tag         | Meaning             |
+| ----------- | ------------------- |
+| `<header>`  | Intro / top section |
+| `<nav>`     | Navigation          |
+| `<main>`    | Primary content     |
+| `<section>` | Logical grouping    |
+| `<article>` | Independent content |
+| `<aside>`   | Side info           |
+| `<footer>`  | Footer              |
+
+
+we do not have to user div everywhere we use semantic tags in order to reduce use of div everywhere
+
+
+
+
+
+6. Text Content Tags (Meaning > Styling)
+| Tag            | Use                      |
+| -------------- | ------------------------ |
+| `<h1>`–`<h6>`  | Headings (order matters) |
+| `<p>`          | Paragraph                |
+| `<strong>`     | Important (semantic)     |
+| `<em>`         | Emphasis                 |
+| `<mark>`       | Highlight                |
+| `<small>`      | Fine print               |
+| `<blockquote>` | Quoted content           |
+| `<code>`       | Inline code              |
+| `<pre>`        | Preformatted             |
+
+
+
+7. Links & Media
+
+Anchor <a>
+
+<a href="/about" target="_blank" rel="noopener">About</a>
+
+Attributes you MUST know:
+
+href
+target
+rel (security!)
+download
+
+
+Image <img>
+<img src="img.jpg" alt="Profile photo" loading="lazy">
+
+
+lt is NOT optional (accessibility & SEO).(Important)
+
+
+8.Lists (Structure Matters)
+
+<ul>
+  <li>Item</li>
+</ul>
+
+<ol>
+  <li>Step</li>
+</ol>
+
+<dl>
+  <dt>HTML</dt>
+  <dd>Markup language</dd>
+</dl>
+
+
+9.Forms
+
+<form>
+
+
+<form action="/submit" method="POST">
+
+Input Types
+| Type       | Use              |
+| ---------- | ---------------- |
+| `text`     | Text             |
+| `email`    | Email validation |
+| `password` | Password         |
+| `number`   | Numbers          |
+| `checkbox` | Multiple         |
+| `radio`    | One choice       |
+| `file`     | Upload           |
+| `date`     | Date picker      |
+| `range`    | Slider           |
+| `hidden`   | Invisible data   |
+
+
+Important Attributes
+
+name (server needs this)
+value
+required
+placeholder
+disabled
+readonly
+pattern
+
+ No name = data NOT submitted.
+
+
+10.Tables
+<table>
+  <thead>
+  <tbody>
+  <tfoot>
+
+
+11. Accessibility
+
+
+ARIA Attributes (Use only when needed)
+ARIA = Accessible Rich Internet Applications
+
+
+Screen readers aur assistive tech ko batata hai:
+
+ye element kya hai
+
+kaise behave karta hai
+
+abhi kya state me hai
+
+Browser ko nahi — insaan (assistive tech user) ko help karta hai.
+
+ARIA KI ZAROORAT KYON PADTI HAI?
+
+HTML ke paas fixed semantics hote hain.
+Par modern apps me hum banate hain:
+
+custom dropdowns
+
+modals
+
+tabs
+
+sliders
+
+toasts
+
+Ye sab div + JS se bante hain → browser ko samajh nahi aata.
+
+👉 ARIA bolta hai:
+
+“Bhai ye div actually button hai”
+“Ye modal open ho chuka hai”
+“Ye input error state me hai”
+
+
+
+<button aria-label="Close modal">X</button>
+
+key ARIA:
+
+aria-label
+aria-hidden
+role
+aria-live
+
+🚫 Don’t abuse ARIA. Semantic HTML > ARIA.
+
+
+12.Meta Tags (SEO + Browser Behavior)
+
+
+<meta name="description" content="Page summary">
+<meta name="robots" content="index, follow">
+
+Bad meta = invisible site.
+
+13. Script & Link Attributes (Performance Matters)
+
+<script src="app.js" defer></script>
+
+| Attribute | Effect           |
+| --------- | ---------------- |
+| `defer`   | Load after HTML  |
+| `async`   | Load immediately |
+
+
+
+CSS
+<link rel="stylesheet" href="style.css">
+
+
+
+
