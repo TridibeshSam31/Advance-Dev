@@ -1,0 +1,53 @@
+Hoisting
+
+Most of the prople think that in hoisting js code moves on the top 
+but this is only on the surface level 
+
+
+the correct explaination is 
+
+Hoisting is the result of the creation phase of execution, where memory is allocated before code runs.
+what is creation phase of exrcution ??
+what is Execution phase ??
+
+
+
+Creation Phase
+
+Memory allocated
+Variables & functions registered
+Scope chain built now what is this scope chain ??
+
+we will understand scope chain in deep during lexical scoping 
+
+
+
+Execution Phase
+
+Code runs line by line
+Values assigned
+
+
+Now before moving there are two types of error i.e reference error and type error 
+
+what is reference Error ?? 
+means I don’t know what this is
+referenceError occurs when JavaScript cannot find a variable in the current scope chain.
+
+In simple words:
+
+Variable does not exist
+Or exists but is in Temporal Dead Zone (TDZ)
+
+
+TypeError — “This exists, but you’re using it WRONG”
+TypeError occurs when you try to perform an operation on a value that is not of the expected type.
+
+In simple words:
+
+Variable exists
+But the operation is invalid
+
+nOW I will add everythin in hoisting file 
+
+
