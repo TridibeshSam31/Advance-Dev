@@ -51,3 +51,95 @@ But the operation is invalid
 nOW I will add everythin in hoisting file 
 
 
+
+
+
+
+
+
+
+
+
+
+Scope, Closures & Lexical Environment
+
+what are scopes 
+Scope is the set of rules that determines where a variable can be accessed in your code.
+
+If JS can’t find a variable in the current scope, it walks outward.
+If it reaches the global scope and still doesn’t find it →  ReferenceError.
+
+
+THE SCOPE CHAIN
+
+JS follows a one-directional lookup rule:
+Current Scope
+   ↓
+Outer Scope
+   ↓
+Outer of Outer
+   ↓
+Global Scope
+
+
+TYPES OF SCOPE IN JAVASCRIPT
+
+1.Global Scope
+2.Function Scope
+3.Block Scope
+
+
+we will mix this scoping with hoisting that will be create good examples 
+
+
+Closures
+
+Closures is a concept in which a function does not forget the outer variable that is decleared in some other function
+
+
+examples
+function outer() {
+  let x = 10;
+
+  function inner() {
+    console.log(x);
+  }
+
+  return inner;
+}
+
+const fn = outer();
+fn(); // 10
+
+
+one of the important thing is 
+
+Closures do NOT copy values
+Closures keep references to variables
+
+proof 
+
+function outer() {
+  let count = 0;
+
+  return function () {
+    count++;
+    console.log(count);
+  };
+}
+
+const inc = outer();
+inc(); // 1
+inc(); // 2
+
+If value were copied → always 1
+But it increases → same variable, same memory
+
+
+
+
+
+
+
+
+
