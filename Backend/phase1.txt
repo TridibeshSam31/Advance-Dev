@@ -1,2 +1,133 @@
 //express properly 
 //one framework only rest are copy , fastify etc are other way nothing new 
+
+understanding the flow of writing backends systems in production 
+using express or any frameworks 
+
+
+Request lifecycle
+
+A request does NOT go:
+route → controller → response
+
+Actual lifecycle (Express mental model)
+Client
+  ↓
+Node HTTP Server
+  ↓
+Express app
+  ↓
+Global middlewares (TOP → BOTTOM)
+  ↓
+Matched route middlewares
+  ↓
+Controller
+  ↓
+Response
+  ↓
+Error middleware (if any error)
+
+
+
+
+Now moving to middlewares in express 
+Middlewares are a sort of barrier that prevents direct actions 
+Middleware are of 3 tyes lets say 
+
+1.Error Handling Middleware
+2.Global Middleware
+3.Auth/RBAC middlewares 
+
+Each pf them will be discussed briefly 
+
+
+in our server.js files / index.js file we use middlewares like 
+
+app.use() like this 
+
+app.use(express.json()) //this is a kind of global middleware whyyy 
+what it does ?? 
+It actually run on the top of every  requests 
+
+It runs for every incoming request
+For all HTTP methods
+For all routes
+In the exact order it’s defined
+
+
+I will dive deep nowwww
+
+
+
+*****Important thing that was the basic part was is js file are executed from top to bottom therefore Express also follows that nothing special 
+
+lets say we are making authMiddleware now in the server,js we wrote 
+
+
+app.use(authMiddleware);
+app.use("/login", loginRoute);
+
+authMiddleware runs for /login too
+Congratulations, login is now protected 🤡
+
+isiliye hum isko kuch iss tarah likhte hai 
+
+app,use(express.json()) //global middleware first 
+app.use("/auth", authRoutes) 
+app.use(auth); 
+
+
+
+
+
+
+
+
+
+
+req, res, next — deeply
+
+req (request)
+req is not just data, it’s a mutable pipeline object.
+
+Contains:
+
+req.params
+req.query
+req.body
+req.headers
+req.user (YOU add this)
+
+Middlewares enrich req.
+req.user = decodedUser;
+
+
+
+res (response)
+res is a write-once stream.
+
+res.send()
+
+Headers are locked
+Body is sent
+Request lifecycle ENDS
+
+Calling next() after sending response = ❌ bug
+
+
+
+
+next (control switch)
+
+next() means:
+
+“I’m done, pass control to the next middleware”
+
+next(err) means:
+
+“Abort normal flow, jump to error middleware”
+
+⚠️ If you forget next() → request hangs forever
+
+
+
