@@ -1,0 +1,2 @@
+in this we will learn abt databases , better-fetching technique,singleton prisma client and server actions
+

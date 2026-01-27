@@ -1,1 +1,500 @@
 //nodejs internals here
+
+Node.js internals
+
+
+You must understand:
+
+Event loop (timers, I/O, microtasks)
+Call stack vs task queue vs microtask queue
+process.nextTick vs Promise.then
+Why Node is single-threaded but still concurrent
+What blocks the event loop (and why that’s deadly)
+
+👉 If you can’t explain why a CPU-heavy loop kills your server, stop here.
+
+
+
+
+
+starting from this call stack 
+
+
+The Call Stack is a LIFO execution structure that tracks where the JavaScript engine currently is and what it must return to next.
+
+It answers exactly two questions:
+What function is running right now?
+What should run after this finishes?
+
+That’s it.
+
+what is Stack Frame-this is what happens inside the call stack  
+Every function call creates a stack frame containing:
+Function arguments
+Local variables
+Return address (where to go back)
+Execution context
+
+
+function add(a, b) {
+  return a + b;
+}
+
+function calc() {
+  return add(2, 3);
+}
+
+calc();
+
+
+how the above code is evaluated on the stack 
+
+| add()  |  ← executing
+| calc() |
+| global |
+
+
+After add() returns:
+| calc() |
+| global |
+
+
+After calc() returns:
+| global |
+
+
+
+
+Global Execution Context (the bottom)
+
+Before anything runs, JS creates:
+| global |
+
+Variables declared at top level
+Functions defined
+this = global object (Node: global, Browser: window)
+
+Global never pops until program exits.
+
+*****Call Stack is SYNCHRONOUS ONLY this is the most important thing 
+async code can newvwe be executed on the call stack 
+
+setTimeout(() => {
+  console.log("hello");
+}, 0);
+
+console.log("end");
+
+
+Stack timeline:
+1️⃣ Start
+| global |
+
+
+2️⃣ setTimeout called
+| setTimeout |
+| global     |
+
+→ Callback registered, NOT executed
+→ setTimeout pops
+
+
+3️⃣ console.log("end")
+| console.log |
+| global      |
+
+
+4️⃣ Stack empty → Event loop allowed to push callback later
+
+
+one of the key rule is only currently synchronous code lives on the stack 
+
+
+Why stack overflow happens
+function boom() {
+  boom();
+}
+boom();
+
+Stack grows:
+| boom |
+| boom |
+| boom |
+| ...  |
+
+Eventually:
+RangeError: Maximum call stack size exceeded
+
+👉 JS doesn’t auto-yield.
+👉 No tail-call optimization in Node.
+
+
+
+
+
+Call Stack vs Heap
+| Call Stack     | Heap            |
+| -------------- | --------------- |
+| Function calls | Objects, arrays |
+| Fast           | Slower          |
+| Limited size   | Large           |
+| Auto cleanup   | GC-managed      |
+
+
+
+function test() {
+  let obj = { x: 10 };
+}
+
+
+test() → stack
+{ x: 10 } → heap
+obj → pointer stored in stack frame
+
+
+*****Call Stack vs Event Loop 
+Event loop CANNOT interrupt the call stack.
+
+
+If stack is busy:
+
+No timers
+No promises
+No I/O callbacks
+
+setTimeout(() => console.log("timeout"), 0);
+
+while (true) {}
+
+
+timeout will never run.
+Why?
+Because the stack never empties.
+
+
+CPU-heavy loop = Call Stack hostage
+app.get("/", (req, res) => {
+  for (let i = 0; i < 1e9; i++) {}
+  res.send("done");
+});
+
+What actually happens:
+Request handler pushed to stack
+Loop executes for seconds
+Stack never clears
+Event loop frozen
+All other requests stuck
+
+👉 Not slow. DEAD.
+
+
+How async resumes execution (important)
+
+When async work finishes:
+
+Callback placed in queue
+Event loop waits
+Stack becomes empty
+Callback pushed onto stack
+
+fs.readFile("a.txt", () => {
+  console.log("done");
+});
+The callback enters the stack later, like a fresh function call.
+
+
+
+
+
+Think of the call stack as:
+
+A single CPU lane
+Only one car allowed
+Accidents (infinite loops) block the entire highway
+
+Async code doesn’t create new lanes —
+it just waits until the lane is free.
+
+
+so basiclly if I would give a summary then 
+Only ONE thing runs at a time in Node.
+The call stack is brutally simple:
+
+Functions get pushed
+
+They execute
+
+They pop
+
+If the stack is busy → everything else waits.
+
+
+
+
+
+
+
+
+
+IF SOMEONE SAY NODE IS SINGLE THREADED THATS A HALF TRUTH AND HALF LIE 
+
+Truth is that JS runs on one main thread 
+
+lie is "Node can do only one thing" 
+
+in reality what node does is Node adopts a cheat kind of thing that does
+
+It offloads work to:
+
+libuv thread pool (FS, crypto, DNS)
+OS kernel (network I/O)
+While those run elsewhere, the main thread stays free.
+
+because of ehich node is 
+single-threaded execution
+Multi-threaded I/O 
+That’s why Node scales for I/O-heavy apps.
+
+
+
+
+
+
+
+
+EVENT LOOPSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
+
+Myth: Event loop runs async code 
+Truth: Event loop decides WHEN callbacks are allowed to touch the call stack
+
+The event loop never executes code.
+It only pushes callbacks onto the call stack when the stack is empty.
+
+
+If the call stack is NOT empty, the event loop is POWERLESS
+
+No promises.
+No timers.
+No I/O.
+No mercy.
+
+while (true) {}
+
+Event loop = dead spectator.
+
+What the Event Loop actually is (implementation-level)
+At the lowest level, the event loop is basically:
+while (program_is_alive) {
+  run_one_phase();
+  drain_microtasks();
+}
+
+That’s it.
+No magic. No async fairy.
+
+
+Event Loop Phases (Node)
+
+Timers
+I/O callbacks
+Idle, prepare
+Poll
+Check
+Close callbacks
+
+After EVERY phase:
+process.nextTick queue is drained
+Microtask queue (Promise.then) is drained
+
+what is timer phase 
+Handles:
+
+setTimeout
+setInterval
+
+setTimeout(fn, 0) does NOT mean “run immediately”
+
+It means:
+
+“Eligible to run in timers phase after delay AND after stack is empty”
+
+I/O callbacks
+Handles:
+
+TCP errors
+Some network callbacks
+Deferred system callbacks
+
+⚠️ Not:
+fs.readFile completion (that goes via poll)
+
+
+Idle / Prepare
+Internal Node stuff
+
+
+Poll phase
+
+This is the heart.
+Poll phase does:
+Execute I/O callbacks (fs, network)
+If nothing to do → wait
+If timers are due → move to timers phase
+
+This is where Node:
+Sleeps
+Wakes up
+Decides next move
+
+👉 If poll queue is empty AND no timers are due → Node waits
+
+
+Check phase
+
+Handles:
+setImmediate
+
+setImmediate(() => console.log("immediate"));
+
+Always runs after poll, before timers (next loop).
+
+
+Close callbacks
+
+Handles:
+
+socket.on("close")
+Cleanup logic
+
+
+Microtasks
+Now the dangerous part.
+
+Microtask queue contains:
+Promise.then
+queueMicrotask
+
+nextTick queue contains:
+process.nextTick
+
+Priority:
+
+process.nextTick
+Microtasks
+Event loop phases
+
+
+process.nextTick — nuclear Priority
+process.nextTick(() => console.log("tick"));
+Promise.resolve().then(() => console.log("promise"));
+
+Output:
+tick
+promise
+
+
+why this output ??
+Node runs  NextTick Before Microtasks even before moving phases 
+
+
+
+Promise.then — microtask starvation
+function spam() {
+  Promise.resolve().then(spam);
+}
+spam();
+
+
+This:
+
+Never lets event loop reach timers
+
+Starves I/O
+
+Looks “async” but is actually blocking progress
+
+👉 Async ≠ non-blocking
+
+
+Full execution example (step-by-step)
+console.log("A");
+
+setTimeout(() => console.log("B"), 0);
+
+Promise.resolve().then(() => console.log("C"));
+
+setImmediate(() => console.log("D"));
+
+console.log("E");
+
+
+
+Step 1: Call stack (sync)
+A
+E
+
+Step 2: nextTick (none)
+Step 3: Microtasks
+C
+
+Step 4: Event loop phases
+
+Timers → B
+Poll → empty
+Check → D
+
+
+Final output:
+A
+E
+C
+B
+D
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Why CPU-heavy code kills Node
+app.get("/", (req, res) => {
+  for (let i = 0; i < 1e10; i++) {}
+  res.send("done");
+});
+What happens?
+
+That loop runs on main thread
+
+Event loop cannot rotate
+
+No new requests handled
+
+Load balancer thinks instance is dead
+
+Users see timeouts
+
+👉 Node cannot:
+
+Accept connections
+
+Respond to health checks
+
+Execute callbacks
+
+💀 One user = entire server down
