@@ -128,6 +128,200 @@ next(err) means:
 “Abort normal flow, jump to error middleware”
 
 ⚠️ If you forget next() → request hangs forever
+waise next ko ek object ki tarah treet kiya ja skta hai jo aaata hai throw ki jagah pr toh 
 
 
 
+
+
+
+Comparision btwn middlewares 
+
+Global vs Route-level Middleware 
+
+
+Global middleware
+app.use(cors());
+app.use(express.json());
+
+Runs for:
+
+ALL routes
+ALL methods
+
+Use for:
+Parsing
+Logging
+Security
+Rate limiting
+
+
+Route-level middleware
+
+router.get(
+  "/profile",
+  auth,
+  controller
+);
+
+Runs only when:
+
+Route matches
+Method matches
+
+
+
+Mixed example
+
+app.use(express.json());
+app.use("/auth", authRoutes); // public
+app.use(authMiddleware);     // protected below
+app.use("/users", userRoutes);
+app.use("/orders", orderRoutes);
+
+
+
+
+Error-handling middleware
+
+Normal middleware:
+(req, res, next)
+
+Error middleware (MUST be):
+(err, req, res, next)
+
+
+Example of error middleware 
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ message: err.message });
+});
+
+
+
+
+
+HOW ERRORS FLOWS IN A APPLICATION 
+
+throw new Error("boom");
+Or
+next(new Error("boom"));
+→ skips all normal middleware
+→ jumps to first error middleware
+
+
+Async error trap (classic bug)
+app.get("/", async (req, res) => {
+  throw new Error("boom");
+});
+
+❌ Express won’t catch this automatically in old versions
+
+the correct format of the above code is 
+app.get("/", async (req, res, next) => {
+  try {
+    throw new Error("boom");
+  } catch (e) {
+    next(e);
+  }
+});
+
+
+
+Real production structure
+src/
+ ├─ app.js
+ ├─ server.js
+ ├─ routes/
+ │   ├─ user.routes.js
+ │   └─ auth.routes.js
+ ├─ controllers/
+ │   ├─ user.controller.js
+ │   └─ auth.controller.js
+ ├─ services/
+ │   ├─ user.service.js
+ │   └─ auth.service.js
+ ├─ repositories/
+ │   ├─ user.repo.js
+ │   └─ auth.repo.js
+ ├─ middlewares/
+ │   ├─ auth.js
+ │   └─ error.js
+ └─ utils/
+
+
+
+Routes
+
+HTTP method + URL
+Wiring only
+No logic
+
+router.post("/login", controller.login);
+
+
+Controllers (thin!)
+
+Read req
+Call service
+Send res
+
+❌ NO business logic
+❌ NO DB queries
+
+const login = async (req, res, next) => {
+  const result = await authService.login(req.body);
+  res.json(result);
+};
+
+
+
+Services (business brain)
+
+Rules
+Decisions
+Validation
+Use multiple repos
+
+if (!user) throw new Error("Invalid credentials");
+
+
+Repositories (data access)
+
+DB only
+No business logic
+No HTTP concepts
+
+findUserByEmail(email)
+
+
+
+
+
+Why fat controllers are a design smell
+
+If your controller:
+
+Talks to DB
+Validates business rules
+Formats responses
+Handles auth logic
+
+👉 You wrote spaghetti
+
+Why it’s bad:
+
+Not testable
+Not reusable
+Tightly coupled to HTTP
+Impossible to migrate to jobs/queues
+
+👉 Controller should die with HTTP
+👉 Business logic should survive without HTTP
+
+
+
+
+
+
+adding more notes 
