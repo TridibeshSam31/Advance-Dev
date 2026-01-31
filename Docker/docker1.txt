@@ -1,0 +1,3 @@
+//the things that we did in actionable docker
+//writing docker file for a classical nodejs Application 
+//writing dockerfiles for nextjs or any other application what should we keep on mind 
