@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>||ElevelLabs</title>
+</head>
+<style>
+    body {
+        font-family: "Roboto", sans-serif;
+        background: #f5f5f5;
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .container{
+        width: 350px;
+        padding: 40px;
+        background: white;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
+    }
+
+    input{
+        width: 100%;
+        padding: 10px;
+       margin-top: 5px;
+       margin-bottom: 20px;
+       border-radius: 6px;
+       border: 1px solid #ccc;
+
+    }
+
+    button {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: none;
+    margin-bottom: 15px;
+    cursor: pointer;
+    }
+
+  button[type="submit"] {
+    background: white;
+    border: 1px solid #ddd;
+  }
+
+  button:last-of-type {
+    background: #ccc;
+    font-weight: bold;
+    }
+
+    .ok{
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        height: 50px;
+        background: gray;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+
+</style>
+<body>
+   
+   <div class="container">
+    <div style="display: flex; justify-content: center; align-items: center;">
+        <header>||ElevelLabs</header>
+    </div>
+        <div style="display: flex; justify-content: center; align-items: center;"><h2>Create An Account</h2></div>
+    
+    <button class="google-btn">Sign up with Google</button>
+    <label>Email</label>
+    <input type="email" placeholder="Enter your email">
+    <label>Password</label>
+    <input type="password" placeholder="Enter your password">
+    <button class="signup-btn">Sign Up</button>
+
+    
+   </div>
+
+
+   <footer class="ok">By continuing You agree to our terms and privay policy</footer>
+
+    
+
+    
+</body>
+</html>

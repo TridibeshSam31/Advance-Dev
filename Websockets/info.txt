@@ -1,0 +1,188 @@
+Here we will talk about advance backend communications 
+like we will see how backend works in real life 
+
+In real production grade system there is not only one backend 
+if we are using js as a core language then a system with only one backend is not sufficient at all 
+
+why so ??
+
+js is a single threaded language , lets suppose any process took / occupied 1 complete single core 
+then how the other service will work ?? 
+
+For making other services work
+
+We have to distribute the the other services to all the backend , 
+like Backend 1 is connected to 2 , 3 ,4 etc with a  system of async operation pub subs queue etc 
+
+
+like Backend 1 is talking  via http,WebScoket,Message Queue , PuB/Sub 
+
+
+
+This is called Distributed System Communication.'
+
+
+Real Example 
+
+PAYTM 
+When you send ₹100 to someone:
+
+Backend flow might be:
+
+1.Transaction service processes money
+
+2.Database updated
+
+3.Push notification triggered
+
+4.SMS service triggered
+
+5.Email service triggered
+
+
+SO THE FLOW WOULD BE LIKE 
+
+BE1 → Database
+BE1 → Push notification queue → Push service
+BE1 → Phone queue → Phone service
+BE1 → Email queue → Email service
+
+This is Asynchronous Architrectire Using Queues
+
+Why Queues???
+Because:
+
+Transaction must not wait for email/SMS.
+Email can fail without failing the transaction.
+Services are decoupled.
+
+
+
+LEETCODE
+
+When user submits a problem:
+
+THEN WHAT HAPPENS ?????? 
+
+Flow:
+
+1.BE1 receives submission
+2.Saves in database:
+
+problem_id: 1
+code: ...
+status: processing
+
+3.Pushes into:
+Premium users submission queue → Big machines
+Free users submission queue → Small machines
+
+
+This means:
+
+Work is offloaded
+Execution is async
+Tier-based compute scaling
+
+This is Job Queue Architecture.
+
+
+
+
+
+
+
+What are the types of Communication in backend 
+
+Synchronous(Strong Coupling )
+1.HTTP (REST / GraphQL)
+2.WebSocket (debatable)
+
+
+Strong Coupling Mean:
+1.Caller waits For Response 
+2.If doenstram service fails - request fails 
+
+
+
+
+Asynchronous (Weak Coupling)
+1.Messaging queues
+2.Pub/Sub
+3.Server-Sent Events
+4.WebSocket (can be async)
+
+
+Weak Coupling Means:
+
+Caller does NOT wait
+Fire-and-forget
+Systems loosely connected
+
+
+
+Websockets 
+WebSockets provide persistent, full-duplex communication over a single TCP connection.
+
+Persistent → Connection stays open
+Full-duplex → Both client and server can send anytime
+Single TCP connection → No repeated handshakes
+
+
+USE OF WEBSOCKETS IN  REAL LIFE 
+
+1.Chat apps
+2.Live sports updates
+3.Real-time gaming
+4.Financial tickers (example: Binance SOL/USDT)
+5.ollaborative editing
+6.Live customer support
+
+
+
+WHAT IS THE PROBLEM WITH HTTP ??
+
+PROBLEM 1
+
+Network Handshake Per Request
+
+HTTP:
+
+Request → handshake → response → close
+Repeat again and again.
+
+WebSocket:
+
+Handshake once → keep connection open.
+
+
+Problem 2: Cannot Push From Server
+
+HTTP is client-driven.
+
+Server cannot say:
+“Hey price changed!”
+
+
+Unless you use:
+
+Polling
+
+Client keeps asking:
+
+Give me SOL price
+Give me SOL price
+Give me SOL price
+
+Which wastes:
+
+Bandwidth
+CPU
+Latency
+
+💡 Leetcode uses polling after submission
+
+
+
+
+
