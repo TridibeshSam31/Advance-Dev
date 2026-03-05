@@ -24,6 +24,113 @@ Transactions In SQL(imp)
 when we are dealing with transactions using sql we want it to be simultaneous i.e if someone send 50 to ur accound our asccount balkance should be increased by 50 and the user account balance should be decreased by 50 so this must be similtaneous
 there should be no time gap in btwn these process so in order to carry out these operations we write sql querys in such  a way that if one process is completed then the other one is carried out 
 
+A transaction in SQL is a group of one or more database operations that execute as a single unit of work.
+
+Either:
+
+All operations succeed, or
+
+None of them are applied
+
+This prevents inconsistent data.
+
+Example: Bank transfer
+If A sends ₹50 to B
+
+1️⃣ A’s balance decreases by 50
+2️⃣ B’s balance increases by 50
+
+If one happens and the other fails → data corruption.
+
+A transaction ensures both happen together or neither happens.
+
+ACID Properties (Very Important)
+
+Every SQL transaction follows ACID properties.
+
+1️⃣ Atomicity
+
+Transaction is all or nothing.
+
+Example
+If money deducted from A but not added to B → transaction rolls back.
+
+2️⃣ Consistency
+
+Database must remain in a valid state.
+
+Example
+Total balance before transfer = total balance after transfer.
+
+3️⃣ Isolation
+
+Transactions should not interfere with each other.
+
+Example
+Two people transferring money at the same time should not corrupt balances.
+
+4️⃣ Durability
+
+Once transaction is committed, data is permanently stored even if the system crashes.
+
+
+
+Basic Transaction Commands
+
+
+Start Transaction
+BEGIN;
+
+Save changes permanently
+COMMIT;
+
+Undo changes
+ROLLBACK;
+
+Example (User + Address insertion)
+BEGIN;
+
+INSERT INTO users (username, email, password)
+VALUES ('john_doe', 'john_doe1@example.com', 'securepassword123');
+
+INSERT INTO addresses (user_id, city, country, street, pincode)
+VALUES (currval('users_id_seq'), 'New York', 'USA', '123 Broadway St', '10001');
+
+COMMIT;
+
+
+What is happening here ???
+
+Step 1
+
+BEGIN;
+
+Transaction starts.
+
+Step 2
+
+INSERT INTO users
+
+User is inserted.
+
+Step 3
+
+currval('users_id_seq')
+
+Gets the latest generated user id from the sequence.
+
+Step 4
+
+INSERT INTO addresses
+
+Address is inserted using the same user id.
+
+Step 5
+
+COMMIT;
+
+All changes become permanent.
+
 
 
 
