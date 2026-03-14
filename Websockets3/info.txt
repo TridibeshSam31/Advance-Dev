@@ -1,0 +1,4 @@
+basi chat app 
+
+react + tailwind frontend
+and nodejs backend 
