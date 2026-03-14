@@ -1,4 +1,7 @@
-basi chat app 
+single websocket server multiple people part of a single room 
+same like a discord server 
 
-react + tailwind frontend
-and nodejs backend 
+room based logic like person 1 and person 2 are connected to Room 1 so they will 
+be able to exchange the msgs within them none of them will able to see msgs 
+
+Frontend me jab isse chlayenge toh haa msgs 2 times aayenge because of strictmode in react which runs useeffect twice 

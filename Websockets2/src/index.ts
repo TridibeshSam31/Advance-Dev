@@ -4,7 +4,7 @@ import {WebSocketServer,WebSocket} from "ws"
 const wss = new WebSocketServer({port:8080})
 
 let userCount = 0 
-let allSockets: WebSocket[] = []
+let allSockets: WebSocket[] = [] // [socket1, socket2, socket3]
 
 wss.on("connection",(socket)=>{
     allSockets.push(socket)
