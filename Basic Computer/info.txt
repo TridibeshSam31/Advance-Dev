@@ -231,3 +231,159 @@ DNS deep dive (2–3 days): Practice dig +trace, examine A/CNAME/MX. Make a smal
 TCP/UDP (3–4 days): Read about sequence numbers, windows, retransmission. Use Wireshark to capture TCP handshakes.
 HTTP & HTTPS (3–5 days): Use curl to send requests, examine headers, learn status codes. Explore TLS with openssl s_client.
 
+
+
+What is HTTP?
+
+Core idea:
+
+HTTP = a communication protocol between client and server
+
+Client = browser / app
+Server = backend (Node.js, Java, etc.)
+
+
+when we write google.com , browser sends HTTP Request and server processes it then server sends HTTP Response 
+
+
+Structure 
+
+
+Request:
+GET /home HTTP/1.1
+Host: example.com
+User-Agent: Chrome
+
+Response:
+HTTP/1.1 200 OK
+Content-Type: text/html
+
+<html>...</html>
+
+HTTP is stateless i.e server does not remember you between requests 
+thats why we need 
+cookies
+sessions 
+jwt 
+
+
+
+What is HTTPS
+
+
+
+HTTPS = HTTP + Security (Encryption using SSL/TLS)
+
+I will get deep into these Security terms i.e SSL/TLS later 
+
+
+Difference:
+| Feature  | HTTP       | HTTPS     |
+| -------- | ---------- | --------- |
+| Security | ❌ No       | ✅ Yes     |
+| Data     | Plain text | Encrypted |
+| Port     | 80         | 443       |
+| Safe?    | ❌ No       | ✅ Yes     |
+
+
+
+
+Without HTTPS:
+Anyone can read your data (password, OTP, etc.)
+
+With HTTPS:
+Data is encrypted using:
+Public key
+Private key
+
+WHAT ARE THESE Public Key and Private Key  ??? 
+
+They are mathematically linked keys used in cryptography . 
+
+public Key = shared with everyone 
+private key = kept secret(never shared)
+
+They are generated together as a pair 
+
+
+
+How they actually work
+Case 1: Encryption (Confidentiality)
+
+👉 Goal: Send secret message
+
+Flow:
+Server gives you its public key
+You encrypt message using that public key
+Only server can decrypt using its private key
+
+
+Data encrypted with public key → can ONLY be decrypted with private key
+
+
+Case 2: Digital Signature (Authentication)
+
+👉 Goal: Prove identity (I am the real server)
+
+Flow:
+Server signs data using private key
+Client verifies using public key
+
+
+
+Data signed with private key → verified using public key
+
+
+
+What is the use cases of these 
+| Purpose        | Who uses what                       |
+| -------------- | ----------------------------------- |
+| Encryption     | Public → encrypt, Private → decrypt |
+| Authentication | Private → sign, Public → verify     |
+
+
+
+Why do we even need this?
+
+Because symmetric encryption has a big problem:
+
+👉 How do you share the secret key securely?
+
+Solution:
+
+Use public/private keys to exchange secret safely
+Then switch to fast symmetric encryption
+
+
+
+
+
+Now Explaining what is Security (Encryption using SSL/TLS)
+
+What is SSL/TLS (no fluff)
+
+ TLS (Transport Layer Security) is the modern protocol
+ SSL is outdated (don’t say SSL in interviews unless referring historically)
+
+
+Purpose:
+
+Encrypt data
+Ensure data integrity
+Verify identity of server
+
+
+
+Getting Deep Into TLS 
+
+
+TLS uses two types of encryption together:
+
+Asymmetric encryption (slow, secure)
+Symmetric encryption (fast, efficient)
+
+👉 Combination = speed + security
+
+
+1. Asymmetric Encryption (Public + Private Key)
+
