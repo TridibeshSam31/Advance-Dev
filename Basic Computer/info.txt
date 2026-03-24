@@ -387,3 +387,167 @@ Symmetric encryption (fast, efficient)
 
 1. Asymmetric Encryption (Public + Private Key)
 
+Server has:
+Public Key (shared with everyone)
+Private Key (kept secret)
+
+
+Flow:
+Client encrypts data using public key
+Server decrypts using private key
+
+
+Asymmetric encryption is slow
+👉 That’s why we don’t use it for full communication
+
+
+
+Symmetric Encryption (Single Key)
+Both client & server use same secret key
+Flow:
+Encrypt + decrypt using same key
+
+👉 Very fast (used for actual data transfer)
+
+
+
+
+Why HTTPS is secure (real understanding)
+❌ Without TLS:
+Hacker can:
+Read data
+Modify data
+Steal passwords
+
+✅ With TLS:
+Data is encrypted
+Identity is verified
+Data tampering detected
+
+
+Without TLS:
+
+Attacker sits between client & server:
+
+Reads everything
+Changes responses
+With TLS:
+Attacker cannot decrypt
+Cannot fake certificate (browser will warn)
+
+
+
+
+What is DNS
+DNS = converts domain name → IP address
+
+Because:
+👉 Humans remember google.com
+👉 Computers understand 142.250.183.14
+
+
+
+Step-by-step:
+You type: google.com
+Browser checks cache
+OS checks cache
+Router/ISP checks cache
+
+If not found:
+
+Request goes to DNS Resolver
+Resolver asks:
+Root Server → “Where is .com?”
+TLD Server → “Where is google.com?”
+Authoritative Server → “Here is IP”
+IP returned → browser sends HTTP request
+
+
+
+
+
+
+
+
+When you type google.com, this happens:
+
+
+
+1. DNS Resolver (starting point)
+
+👉 This is your middleman
+
+Usually:
+ISP (Jio, Airtel)
+Or Google DNS (8.8.8.8)
+
+
+Role:
+Takes your request
+Does all the hard work
+Returns final IP
+
+
+Browser doesn’t directly go to root servers
+👉 Resolver does everything for you
+
+
+Root Server (top of hierarchy)
+
+👉 Knows where TLD servers are
+
+Example:
+
+You ask:
+
+“Where is .com?”
+
+Root server replies:
+
+“Go ask this TLD server”
+
+
+
+Root server does NOT know IP of google.com
+It only knows who to ask next
+
+
+
+
+ TLD Server (.com, .org, .in)
+
+👉 Manages domain extensions
+
+Example:
+
+You ask:
+
+“Where is google.com?”
+
+TLD server replies:
+
+“Ask this authoritative server”
+
+
+
+
+Authoritative Server
+This is the only place with actual answer
+
+Example:
+
+You ask:
+
+“What is IP of google.com?”
+
+It replies:
+
+142.250.xxx.xxx
+
+
+
+
+
+
+Final Flow 
+Client → Resolver → Root → TLD → Authoritative → IP
