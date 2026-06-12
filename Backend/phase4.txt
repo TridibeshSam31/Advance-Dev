@@ -1,1 +1,416 @@
  Database Mastery (PostgreSQL mindset)
+
+
+
+basic postgreSQL is kind of easy but some doubts that arises are 
+
+postgresql contains some of the following topics which are important 
+
+Views
+Indexes
+Composite Indexes 
+EXPLAIN ANALYZE 
+Query Optimization
+
+
+1.views 
+
+A View is a virtual table created from a SQL query.
+nstead of writing the same query repeatedly, you save it as a view.
+
+
+let us understand with an example 
+
+CREATE TABLE users(
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100),
+    is_active BOOLEAN
+);
+
+and data corrosponding to the query 
+1 | Tridibesh | tri@gmail.com | true
+2 | Rahul     | rahul@gmail.com | false
+3 | Amit      | amit@gmail.com | true
+
+
+now what will happen on creating view 
+or using view what will happen 
+
+
+CREATE VIEW active_users AS
+SELECT id,name,email
+FROM users
+WHERE is_active = true;
+
+what did writing this line CREATE VIEW active_users actually did 
+
+without view we had to write this again and again 
+SELECT id,name,email
+FROM users
+WHERE is_active=true;
+
+Now with view we only have to write one single query 
+SELECT * FROM active_users;
+
+
+Real Backend Example
+
+E-commerce:
+
+Tables:
+
+users
+orders
+payments
+
+Create a view:
+
+CREATE VIEW order_summary AS
+SELECT
+u.name,
+o.id AS order_id,
+p.amount
+FROM users u
+JOIN orders o ON u.id=o.user_id
+JOIN payments p ON o.id=p.order_id;
+
+Now frontend can simply:
+
+SELECT * FROM order_summary;
+
+
+
+2.Indexes
+Already  covered in deep
+
+3.Composite Indexes
+Suppose:
+users
+
+Columns:
+
+id
+name
+city
+age
+
+Query:
+
+SELECT *
+FROM users
+WHERE city='Delhi'
+AND age=21;
+Option 1
+
+Two indexes:
+
+CREATE INDEX idx_city ON users(city);
+CREATE INDEX idx_age ON users(age);
+
+Works.
+
+But not optimal.
+
+Option 2
+
+Composite Index
+
+CREATE INDEX idx_city_age
+ON users(city,age);
+
+Postgres stores:
+
+Delhi,20
+Delhi,21
+Delhi,22
+
+Mumbai,20
+Mumbai,21
+
+Searching becomes faster.
+
+Order Matters
+
+Index:
+
+(city,age)
+
+Works well for:
+
+WHERE city='Delhi';
+
+Works well for:
+
+WHERE city='Delhi'
+AND age=21;
+
+Not great for:
+
+WHERE age=21;
+
+Because city is first.
+
+Example:
+
+(city,age)
+
+Good:
+
+city
+city + age
+
+Bad:
+age only
+
+
+Real Backend Example
+
+Payment table:
+
+id
+user_id
+status
+created_at
+
+Common query:
+
+SELECT *
+FROM payments
+WHERE user_id=1
+AND status='SUCCESS';
+
+Create:
+
+CREATE INDEX idx_user_status
+ON payments(user_id,status);
+
+Huge performance boost.
+
+
+
+4. EXPLAIN
+
+Postgres can show how it plans to execute a query.
+
+Example:
+
+EXPLAIN
+SELECT *
+FROM users
+WHERE email='abc@gmail.com';
+
+Output:
+
+Index Scan
+
+or
+
+Seq Scan
+Seq Scan
+
+Sequential Scan
+
+Means:
+
+Checking every row
+
+Bad for large tables.
+
+Example:
+
+Seq Scan on users
+
+Means no useful index used.
+
+Index Scan
+Index Scan using idx_email
+
+Means Postgres used index.
+
+Good.
+
+5. EXPLAIN ANALYZE
+
+Most important tool for optimization.
+
+EXPLAIN only shows:
+
+What PostgreSQL plans to do
+
+EXPLAIN ANALYZE shows:
+
+What actually happened
+
+and execution time.
+
+Example
+
+EXPLAIN ANALYZE
+SELECT *
+FROM users
+WHERE email='abc@gmail.com';
+
+Output:
+
+Index Scan using idx_email
+
+Execution Time: 0.5 ms
+
+Without index:
+
+Seq Scan
+
+Execution Time: 350 ms
+
+Huge difference.
+
+Understanding Cost
+
+Output:
+
+cost=0.29..8.31
+
+Means:
+
+Estimated work
+
+Lower cost generally better.
+
+Not exact time.
+
+Only optimizer estimate.
+
+Understanding Rows
+
+Example:
+
+rows=1
+
+Postgres expects:
+
+1 row returned
+
+If actual:
+
+100000 rows
+
+Statistics are outdated.
+
+Need:
+
+ANALYZE users;
+6. Query Optimization
+
+Goal:
+
+Reduce response time
+Reduce CPU
+Reduce memory
+Reduce disk reads
+Optimization #1
+
+Avoid
+
+SELECT *
+
+Bad:
+
+SELECT *
+FROM users;
+
+Good:
+
+SELECT id,name
+FROM users;
+
+Less data transferred.
+
+Optimization #2
+
+Use Indexes
+
+Bad:
+
+SELECT *
+FROM users
+WHERE email='abc@gmail.com';
+
+without index.
+
+Good:
+
+CREATE INDEX idx_email
+ON users(email);
+Optimization #3
+
+Avoid Functions on Indexed Columns
+
+Bad:
+
+SELECT *
+FROM users
+WHERE LOWER(email)='abc@gmail.com';
+
+Index ignored.
+
+Better:
+
+Store normalized emails.
+
+or create expression index.
+
+CREATE INDEX idx_lower_email
+ON users(LOWER(email));
+Optimization #4
+
+LIMIT
+
+Bad:
+
+SELECT *
+FROM users;
+
+Good:
+
+SELECT *
+FROM users
+LIMIT 20;
+
+Especially for pagination.
+
+Optimization #5
+
+Use Pagination
+
+Bad:
+
+SELECT * FROM posts;
+
+Good:
+
+SELECT *
+FROM posts
+LIMIT 20 OFFSET 0;
+Optimization #6
+
+Avoid N+1 Queries
+
+Bad:
+
+Get users
+For each user:
+    Get orders
+
+100 users:
+
+101 queries
+
+Better:
+
+SELECT *
+FROM users
+JOIN orders
+ON users.id=orders.user_id;
+
+Single query.
