@@ -1,0 +1,321 @@
+Client → Multer → Express → Cloudinary → Database
+
+cloudinary is just a provider , it can be other providers also 
+
+
+First what is multipart ?? why is it needed ??
+
+
+Normally when we send JSON:
+
+{
+  "name": "Tridibesh",
+  "email": "abc@gmail.com"
+}
+
+Content-Type:
+
+application/json
+
+Works fine for text.
+
+But whenever we are sending binary form of data like images , videos etc these are binary form of data 
+so they are of heavy size in order to handle them what we do is break the data into multiple parts 
+so that they can be handeled easily 
+
+
+JSON cannot directly send binary files efficiently.
+
+So browsers use:
+
+multipart/form-data
+
+Example Request:
+
+POST /upload
+
+name=Tridibesh
+email=abc@gmail.com
+profilePic=myimage.jpg
+
+The request is split into multiple parts.
+
+Visual representation:
+
+Part 1
+-------
+name = Tridibesh
+
+Part 2
+-------
+email = abc@gmail.com
+
+Part 3
+-------
+profilePic = image.jpg(binary data)
+
+Hence the name:
+
+multipart = many parts
+form-data = form fields
+
+Why not JSON?
+
+Bad:
+
+{
+  "image": "1000000000 characters..."
+}
+
+Huge size.
+
+Slow.
+
+Inefficient.
+
+Instead:
+
+multipart/form-data
+
+handles files properly.
+
+
+
+now when we are using Express , in order to handle file handling we use multer 
+so that it can handle this part multipart/form-data
+
+
+if multer is not there or we are not using multer then we wont be able to use that '
+req.body  because it wont read the uploaded files
+
+
+Frontend
+   ↓
+multipart/form-data
+   ↓
+Express
+   ↓
+Multer
+   ↓
+File Available
+
+
+Example
+app.post("/upload", upload.single("image"), (req,res)=>{
+    console.log(req.file);
+});
+
+
+User uploads:
+avatar.jpg
+
+Multer extracts it and puts it inside:
+req.file
+
+
+Multer contains some of the methods 
+
+1.Single file 
+
+upload.single("image")
+
+Frontend:
+<input type="file" name="image" />
+
+now we can use req.file
+
+2.Multiple Files
+
+upload.array("images", 5)
+
+Maximum:
+5 files
+
+Access:
+req.files
+
+
+3.Multiple Different Fields
+
+
+upload.fields([
+  {name:"profilePic"},
+  {name:"resume"}
+])
+
+Access:
+req.files.profilePic
+req.files.resume
+
+
+
+
+Memory Storage vs Disk Storage
+
+Multer can store images / binary files in 2 storages memory storage 
+and disk storage 
+
+Disk storage will save file on the server side 
+
+
+const storage = multer.diskStorage({
+ destination:(req,file,cb)=>{
+   cb(null,"uploads/");
+ },
+ filename:(req,file,cb)=>{
+   cb(null,Date.now()+"-"+file.originalname);
+ }
+});
+
+
+Flow
+User Uploads Image
+       ↓
+Server uploads folder
+       ↓
+Image stored
+
+Example:
+
+uploads/
+   profile1.jpg
+   profile2.jpg
+
+
+
+Pros
+
+Easy
+Simple
+Good for learning
+
+Cons
+
+Server storage fills up.
+Not scalable.
+
+If server crashes:
+images gone
+
+Not suitable for production.
+
+
+Memory Storage
+
+Store file in RAM.
+const storage = multer.memoryStorage();
+No file written to disk.
+
+Instead:
+
+req.file.buffer
+
+contains binary data.
+
+Flow:
+
+User Upload
+     ↓
+RAM
+     ↓
+Cloudinary
+     ↓
+Deleted from RAM
+Pros
+
+Fast
+
+No local storage
+Perfect for Cloudinary
+Scalable
+
+Cons
+
+Large files consume RAM.
+Need size limits.
+
+
+What is cloudinary ?????
+Cloudinary is a cloud media storage service.
+
+Instead of saving images in our server side 
+
+what we can do is create a connection of server to cloudinary so we can store images there
+
+Why Cloudinary?
+
+Imagine:
+10,000 users
+
+Each uploads:
+5 MB image
+
+Storage needed:
+50 GB
+
+Why store on your server?
+Cloudinary handles:
+
+Storage
+Optimization
+CDN (we will know later)
+Compression
+Image Transformation
+
+Example URL:
+
+https://res.cloudinary.com/xyz/image/upload/abc.jpg
+
+Store only this URL in database.
+
+Cloudinary Setup
+
+Install:
+
+npm install cloudinary
+
+Configure:
+
+const cloudinary = require("cloudinary").v2;
+
+cloudinary.config({
+ cloud_name:process.env.CLOUD_NAME,
+ api_key:process.env.API_KEY,
+ api_secret:process.env.API_SECRET
+});
+Upload Image to Cloudinary
+
+Typical Flow:
+
+Frontend
+    ↓
+Multer
+    ↓
+Buffer
+    ↓
+Cloudinary
+    ↓
+URL
+    ↓
+MongoDB
+
+Example Database Record
+
+{
+  name:"Tridibesh",
+  email:"abc@gmail.com",
+  profilePic:
+  "https://res.cloudinary.com/..."
+}
+
+Never store:
+Actual Image
+
+Store:
+Image URL
+
+
+
+
+
+
