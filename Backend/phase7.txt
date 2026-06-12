@@ -1,0 +1,550 @@
+Redis and caching 
+
+
+what is Redis ???
+
+Redis is an open-source, in-memory data structure store, used as a database, cache, and message broker
+One of the key features of Redis is its ability to keep all data in memory, which allows for high performance and low latency access to data. 
+
+In memory data structure store
+Very similar to a DB, only it is in memory. That doesn’t mean it doesn’t have persistence
+RDB (Redis Database File): The RDB persistence performs point-in-time snapshots of your dataset at specified intervals.
+It creates a compact single-file representation of the entire Redis dataset. The snapshotting process can be configured to run at specified intervals, such as every X minutes if Y keys have changed.
+
+
+save 900 1       # Save the dataset every 900 seconds if at least 1 key changed
+save 300 10      # Save the dataset every 300 seconds if at least 10 keys changed
+save 60 10000    # Save the dataset every 60 seconds if at least 10000 keys changed
+
+AOF (Append Only File): The AOF persistence logs every write operation received by the server, appending each operation to a file. 
+
+This file can then be replayed on startup to reconstruct the dataset. 
+
+
+Starting redis locally
+
+
+Let’s start redis locally and start using it as a DB
+docker run --name my-redis -d -p 6379:6379 redis
+
+Connecting to your container
+docker exec -it container_id /bin/bash
+
+Connecting to the redis cli
+redis-cli
+
+
+Redis as a DB
+
+SET/GET/DEL
+
+Setting data
+SET mykey "Hello" 
+
+Getting data
+GET mykey
+
+Deleting data
+DEL mykey
+
+ 
+HSET/HGET/HDEL (H = Hash)
+HSET user:100 name "John Doe" email "user@example.com" age "30"
+HGET user:100 name
+HGET user:100 email
+
+
+why we should not use redis as a primary database ???
+
+Redis is designed for:
+
+Speed
+
+not for:
+
+Durability
+Consistency
+Complex Queries
+Long-term Storage
+
+Traditional databases like:
+
+PostgreSQL
+MySQL
+
+are designed for:
+
+Data Safety
+ACID Transactions
+Persistence
+Complex Queries
+Relationships
+
+Problem 1: Redis Stores Data In RAM
+
+RAM is volatile memory.
+
+RAM = Fast
+Disk = Slow
+
+If power goes away:
+
+Server Crash
+↓
+RAM Cleared
+↓
+Data Lost
+
+Example:
+
+User Balance = ₹5000
+Stored only in Redis
+
+Server crashes.
+
+Balance = Gone
+
+Imagine this happening in:
+
+Bank
+UPI App
+Stock Trading App
+
+Company would be finished.
+
+Problem 2: Persistence Is Not Redis's Main Goal
+
+Redis has persistence mechanisms:
+
+RDB Snapshots
+AOF Logs
+
+But they're not as strong as a relational database.
+
+Example:
+
+Suppose Redis saves snapshots every 5 minutes.
+
+10:00 Snapshot Taken
+
+Then:
+
+10:01 User Deposits ₹1000
+10:02 User Deposits ₹2000
+10:03 Server Crashes
+
+Latest snapshot:
+
+10:00
+
+Transactions between:
+
+10:00 → 10:03
+
+may be lost.
+
+With PostgreSQL, committed transactions are designed to survive crashes much more reliably.
+
+Problem 3: No Relational Data
+
+Suppose you're building an E-commerce app.
+
+Tables:
+
+Users
+Orders
+Products
+Payments
+
+Relations:
+
+User
+ ↓
+Orders
+ ↓
+Products
+
+In PostgreSQL:
+
+SELECT *
+FROM orders
+JOIN users
+ON users.id = orders.user_id;
+
+Easy.
+
+In Redis:
+
+No Joins
+No Foreign Keys
+No Relational Constraints
+
+You manually manage everything.
+
+As the project grows:
+
+Complexity Explodes
+Problem 4: No Strong ACID Transactions Like SQL Databases
+
+Consider:
+
+Account A = ₹1000
+Account B = ₹500
+
+Transfer:
+
+₹300
+
+Expected:
+
+A = 700
+B = 800
+
+What if:
+
+A deducted
+↓
+Server crashes
+↓
+B never credited
+
+Money disappeared.
+
+Relational databases solve this using transactions.
+
+Example:
+
+BEGIN;
+
+UPDATE accounts
+SET balance = balance - 300
+WHERE id = 1;
+
+UPDATE accounts
+SET balance = balance + 300
+WHERE id = 2;
+
+COMMIT;
+
+Either:
+
+Both succeed
+
+or
+
+Both fail
+
+No partial state.
+
+Problem 5: Memory Is Expensive
+
+Let's compare.
+
+1 TB Disk
+Cheap
+1 TB RAM
+Extremely Expensive
+
+Imagine storing:
+
+100 Million Users
+Photos
+Orders
+Messages
+
+in RAM.
+
+Your cloud bill would become ridiculous.
+
+Problem 6: Cache Eviction
+
+Redis may remove keys when memory fills up.
+
+Policies include:
+
+LRU
+LFU
+Random
+TTL-based
+
+Example:
+
+Redis Full
+↓
+Deletes Old Keys
+
+If Redis is your only database:
+
+Data Lost
+
+A database should never randomly delete business-critical data.
+
+Real Production Architecture
+
+Instead of:
+
+Client
+ ↓
+Redis
+
+Companies do:
+
+Client
+ ↓
+Backend
+ ↓
+Redis Cache
+ ↓
+PostgreSQL
+
+Flow:
+
+Request
+ ↓
+Redis
+ ↓
+Hit?
+ ↓ Yes
+Return
+
+↓ No
+PostgreSQL
+ ↓
+Store in Redis
+ ↓
+Return
+
+Redis acts as:
+
+Acceleration Layer
+
+PostgreSQL acts as:
+
+Source of Truth
+When Redis CAN Be a Primary Database
+
+There are exceptions.
+
+Redis can be the main store for:
+
+Sessions
+User Login Sessions
+
+OTPs
+Phone Verification OTP
+
+Rate Limiting
+Requests Per Minute
+
+Temporary Caches
+Movie Search Results
+
+Weather Data
+
+Trending Products
+
+Leaderboards
+Gaming systems often use Redis sorted sets.
+
+
+Redis as a queue
+You can also push to a topic / queue on Redis and other processes can pop from it.
+Good example of this is Leetcode submissions that need to be processed asynchronously
+
+
+Pushing to a queue
+LPUSH problems 1
+LPUSH problems 2
+
+ 
+Popping from a queue
+RPOP problems
+RPOP problems 
+
+ 
+Blocked pop
+BRPOP problems 0
+BRPOP problems 30
+
+The last argument represents the timeout before the blocking should be stopped
+
+
+
+Talking to redis via Node.js
+
+Let’s initialize a simple Node.js express server that takes a problem submission (very similar to leetcode) as input and sends it to the queue
+Let’s also create a worker service that picks up a problem, waits for 2 seconds and then proceeds to pick the next one
+
+Create an empty Node.js project
+
+Initialize 2 folders inside it
+express-server
+worker
+Initialize an empty Node.js typescript project in both of them
+npm init -y
+npx tsc --init
+
+Install dependencies in express-server
+npm i express @types/express redis
+
+Install dependencies in worker
+npm i redis
+
+Create index.ts in express-server
+
+import express from "express";
+import { createClient } from "redis";
+
+const app = express();
+app.use(express.json());
+
+const client = createClient();
+client.on('error', (err) => console.log('Redis Client Error', err));
+
+app.post("/submit", async (req, res) => {
+    const problemId = req.body.problemId;
+    const code = req.body.code;
+    const language = req.body.language;
+
+    try {
+        await client.lPush("problems", JSON.stringify({ code, language, problemId }));
+        // Store in the database
+        res.status(200).send("Submission received and stored.");
+    } catch (error) {
+        console.error("Redis error:", error);
+        res.status(500).send("Failed to store submission.");
+    }
+});
+
+async function startServer() {
+    try {
+        await client.connect();
+        console.log("Connected to Redis");
+
+        app.listen(3000, () => {
+            console.log("Server is running on port 3000");
+        });
+    } catch (error) {
+        console.error("Failed to connect to Redis", error);
+    }
+}
+
+startServer();
+
+Create index.ts in worker
+
+import { createClient } from "redis";
+const client = createClient();
+
+async function processSubmission(submission: string) {
+    const { problemId, code, language } = JSON.parse(submission);
+
+    console.log(`Processing submission for problemId ${problemId}...`);
+    console.log(`Code: ${code}`);
+    console.log(`Language: ${language}`);
+    // Here you would add your actual processing logic
+
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log(`Finished processing submission for problemId ${problemId}.`);
+}
+
+async function startWorker() {
+
+    try {
+        await client.connect();
+        console.log("Worker connected to Redis.");
+
+        // Main loop
+        while (true) {
+            try {
+                const submission = await client.brPop("problems", 0);
+                // @ts-ignore
+                await processSubmission(submission.element);
+            } catch (error) {
+                console.error("Error processing submission:", error);
+                // Implement your error handling logic here. For example, you might want to push
+                // the submission back onto the queue or log the error to a file.
+            }
+        }
+    } catch (error) {
+        console.error("Failed to connect to Redis", error);
+    }
+}
+
+startWorker();
+
+
+
+
+
+Pub subs
+
+Publish-subscribe (pub-sub) is a messaging pattern where messages are published to a topic without the knowledge of what or if any subscribers there might be. Similarly, subscribers listen for messages on topics of interest without knowing which publishers are sending them. 
+This decoupling of publishers and subscribers allows for highly scalable and flexible communication systems.
+
+
+Subscribe to a topic
+SUBSCRIBE problems_done
+
+ 
+Publishing to a topic
+PUBLISH problems_done "{id: 1, ans: 'TLE'}"
+
+
+
+
+
+Pub subs in Node.js
+ 
+Let’s update the worker code to publish the final submission from the worker to the redis pub sub
+import { createClient } from "redis";
+const client = createClient();
+
+async function processSubmission(submission: string) {
+    const { problemId, code, language } = JSON.parse(submission);
+
+    console.log(`Processing submission for problemId ${problemId}...`);
+    console.log(`Code: ${code}`);
+    console.log(`Language: ${language}`);
+    // Here you would add your actual processing logic
+
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log(`Finished processing submission for problemId ${problemId}.`);
+    client.publish("problem_done", JSON.stringify({ problemId, status: "TLE" }));
+}
+
+async function startWorker() {
+
+    try {
+        await client.connect();
+        console.log("Worker connected to Redis.");
+
+        // Main loop
+        while (true) {
+            try {
+                const submission = await client.brPop("problems", 0);
+                // @ts-ignore
+                await processSubmission(submission.element);
+            } catch (error) {
+                console.error("Error processing submission:", error);
+                // Implement your error handling logic here. For example, you might want to push
+                // the submission back onto the queue or log the error to a file.
+            }
+        }
+    } catch (error) {
+        console.error("Failed to connect to Redis", error);
+    }
+}
+
+startWorker();
+
+ 
+ 
+Try subscribing to it from the redis-cli
+SUBSCRIBE problem_done
+
+
+
+
