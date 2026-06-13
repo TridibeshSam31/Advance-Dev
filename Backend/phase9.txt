@@ -1,0 +1,175 @@
+REST Done Right
+REST is not just "use HTTP and return JSON". Most people do REST wrong. Here's what it actually means.
+
+Resource Naming
+Resources are nouns, not verbs. The HTTP method expresses the action.
+❌ Wrong — verbs in URLs
+GET  /getUsers
+POST /createUser
+POST /deleteUser/1
+POST /updateUser/1
+
+✅ Correct — nouns, plural
+GET    /users
+POST   /users
+DELETE /users/1
+PUT    /users/1
+Use plural nouns for collections (/users, /orders, /products). Use the ID to address a specific resource (/users/42).
+Nested resources for clear ownership relationships:
+GET  /users/42/orders        → all orders for user 42
+GET  /users/42/orders/7      → order 7 belonging to user 42
+POST /users/42/orders        → create an order for user 42
+Don't go deeper than 2-3 levels. /users/42/orders/7/items/3/reviews is a smell. At that depth, expose the sub-resource directly: GET /reviews/99.
+For actions that don't map cleanly to CRUD, use a sub-resource verb as a last resort:
+POST /orders/7/cancel
+POST /users/42/deactivate
+POST /payments/99/refund
+
+HTTP Verbs — What They Actually Mean
+Each HTTP method has a defined semantic meaning. Using them correctly makes your API self-documenting and allows caching/proxies to behave correctly.
+GET — retrieve a resource, no side effects, safe to call multiple times. Never use GET to modify state.
+POST — create a new resource or trigger an action. Not idempotent — calling it twice creates two resources.
+PUT — replace a resource entirely. Idempotent — calling it 10 times with the same body produces the same result as calling it once.
+PATCH — partial update. Only send the fields you want to change. Not necessarily idempotent.
+DELETE — remove a resource. Idempotent — deleting an already-deleted resource should return 204 or 404, not an error.
+GET    /users/42        → return user 42
+POST   /users           → create a new user, returns 201 + Location header
+PUT    /users/42        → replace user 42 entirely (send full representation)
+PATCH  /users/42        → update specific fields of user 42
+DELETE /users/42        → delete user 42
+
+Idempotent Operations
+An operation is idempotent if calling it N times has the same effect as calling it once.
+MethodIdempotentSafe (no side effects)GETYesYesHEADYesYesPUTYesNoDELETEYesNoPOSTNoNoPATCHNoNo
+Why does this matter practically? Clients retry failed requests (network timeouts, etc.). If PUT /users/42 with the same body is retried 3 times due to a flaky connection, the result is correct — the user ends up in the same state. If POST /orders is retried 3 times, you get 3 orders. This is why order creation needs idempotency keys.
+Idempotency keys for POST:
+POST /orders
+Idempotency-Key: a8f3b2c1-9d4e-11ef-b864-0242ac120002
+
+{ "productId": 5, "qty": 1 }
+The server stores the response against this key. If the same key arrives again, return the stored response. The client can safely retry.
+
+HTTP Status Codes — Use Them Correctly
+2xx — Success
+  200 OK              → general success (GET, PUT, PATCH)
+  201 Created         → resource created (POST), include Location header
+  202 Accepted        → async work queued, processing hasn't happened yet
+  204 No Content      → success with no body (DELETE)
+
+4xx — Client error (they did something wrong)
+  400 Bad Request     → malformed request, validation failure
+  401 Unauthorized    → not authenticated (no/invalid token)
+  403 Forbidden       → authenticated but not permitted
+  404 Not Found       → resource doesn't exist
+  409 Conflict        → state conflict (duplicate email, optimistic lock)
+  422 Unprocessable   → syntactically valid but semantically wrong
+  429 Too Many Requests → rate limited
+
+5xx — Server error (you did something wrong)
+  500 Internal Server Error → unhandled exception
+  502 Bad Gateway           → upstream service failed
+  503 Service Unavailable   → down for maintenance or overloaded
+A common mistake: returning 200 with { success: false, error: "not found" } in the body. Never do this. Status codes must reflect reality. Monitoring, load balancers, and clients depend on them.
+
+API Versioning
+APIs change over time. You add fields, rename fields, change behaviour, remove endpoints. But existing clients are already in production using your current API. If you change the API under them, they break. Versioning is how you manage this.
+
+URI-Based Versioning
+The version is part of the URL path.
+https://api.yourapp.com/v1/users
+https://api.yourapp.com/v2/users
+Pros:
+
+Dead simple to understand and use
+Easy to test in a browser or curl
+Easy to route at the infrastructure level (nginx, API gateway)
+Clear in logs and analytics
+
+Cons:
+
+Version is not really part of the resource identity — it's a technical concern leaking into the URL
+Clients hardcode URLs, so migrations require code changes on their end
+
+This is the most common approach and what you should default to unless you have a specific reason not to.
+
+Header-Based Versioning
+The version is sent in a request header.
+GET /users
+Accept: application/vnd.yourapp.v2+json
+
+// or a custom header
+GET /users
+API-Version: 2
+Pros:
+
+Clean URLs — the resource identity doesn't change
+More RESTfully "correct" in theory (the URL identifies the resource, the header describes the representation you want)
+
+Cons:
+
+Not testable in a browser without tooling
+Invisible — clients often forget to set the header and get the wrong version
+Harder to cache (caches must vary on the header)
+Harder to route at the infrastructure level
+
+Header-based versioning is favoured by purists and large API platforms (Stripe uses it). For most backend engineers, URI versioning is the pragmatic choice.
+
+Backward Compatibility
+The goal of versioning is to maintain backward compatibility within a version — meaning existing clients don't break when you deploy changes.
+Breaking changes — require a new version:
+
+Removing a field from a response
+Renaming a field
+Changing a field's data type
+Changing the meaning of an existing field
+Removing an endpoint
+Making a previously optional field required
+
+Non-breaking changes — safe to deploy without a new version:
+
+Adding a new optional field to a response (clients ignore unknown fields)
+Adding a new optional request parameter
+Adding a new endpoint
+Adding a new error code
+
+js// v1 response
+{
+  "id": 1,
+  "name": "Tridibesh Samantroy"
+}
+
+// v2 response — broke name into parts (breaking change → new version)
+{
+  "id": 1,
+  "firstName": "Tridibesh",
+  "lastName": "Samantroy"
+}
+
+// Safe additive change — no new version needed
+{
+  "id": 1,
+  "name": "Tridibesh Samantroy",
+  "createdAt": "2024-01-01T00:00:00Z"  // new field, clients just ignore it
+}
+
+Deprecation Strategy
+
+
+You can't maintain v1 forever. At some point you need to shut it down. The process:
+1. Announce deprecation — communicate via docs, changelog, and email to registered developers. Give a clear end-of-life date (typically 6–12 months minimum for public APIs).
+2. Deprecation headers — start returning a Deprecation header on v1 responses so clients that inspect headers can catch it programmatically.
+HTTP/1.1 200 OK
+Deprecation: true
+Sunset: Sat, 01 Jan 2026 00:00:00 GMT
+Link: <https://api.yourapp.com/v2/users>; rel="successor-version"
+3. Migration guide — document exactly what changed between v1 and v2 and how to migrate. Map old fields to new fields explicitly.
+4. Soft sunset — on the sunset date, start returning 301 redirects or 410 Gone responses. Don't just cut it off silently.
+5. Hard sunset — remove the v1 code entirely. Keep the route alive returning a helpful error message for a while.
+js// After sunset — don't just 404, be helpful
+app.all("/v1/*", (req, res) => {
+  res.status(410).json({
+    error: "API v1 was sunset on 2026-01-01",
+    migration: "https://docs.yourapp.com/migrate-v1-to-v2",
+    v2Base: "https://api.yourapp.com/v2",
+  });
+});
