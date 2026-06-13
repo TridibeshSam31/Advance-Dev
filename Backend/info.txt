@@ -240,7 +240,7 @@ Unit tests
 Integration tests
 Why mocking DBs blindly is dangerous
 
-If you’ve never broken your own API via tests, you’re guessing.
+
 
 
 
