@@ -1,0 +1,125 @@
+Redis Caching — Enhanced Notes
+Why Cache?
+Every time a client hits GET /movies?query=batman, your server makes an outbound call to OMDB. If the data hasn't changed, you're wasting ~500ms and burning API rate-limit quota on every repeat request.
+With Redis caching, the first request is slow (hits OMDB), but every subsequent identical request is served from memory in under 5ms.
+
+Core Flow
+Cache Hit — key exists in Redis → return immediately, no external call.
+Cache Miss — key not in Redis → call external API → store result in Redis → return to client.
+jsconst cacheKey = `movie:${query}`;
+const cached = await redis.get(cacheKey);
+
+if (cached) {
+  return res.json(JSON.parse(cached)); // cache hit
+}
+
+// cache miss
+const data = (await axios.get(API_URL)).data;
+await redis.set(cacheKey, JSON.stringify(data));
+return res.json(data);
+
+Key-Value Model
+Redis is essentially a giant in-memory hashmap. Keys are strings, values are strings. Convention is type:identifier:
+movie:batman    → "{...}"
+movie:ironman   → "{...}"
+user:1          → "{...}"
+product:123     → "{...}"
+Why JSON.stringify? Redis only stores strings. Passing a JS object directly stores [object Object]. Always stringify before set, always parse after get.
+
+TTL (Time To Live)
+Cached data goes stale. A movie's rating today might differ tomorrow. Set an expiry so Redis auto-deletes the key after N seconds:
+jsawait redis.set(cacheKey, JSON.stringify(data), { EX: 3600 }); // expires in 1 hour
+
+const remaining = await redis.ttl("movie:batman"); // → 3570
+Common TTLs:
+
+Movie/product metadata → 3600s (1 hour)
+Auth session tokens → 86400s (24 hours)
+Rate limit windows → 60s (1 minute)
+
+
+Cache Invalidation
+When the source data changes (admin updates a price), Redis still holds the old value. Two strategies:
+Strategy 1 — Delete on update (most common, best interview answer):
+jsawait Product.update(...);
+await redis.del("product:123");
+// next request will be a cache miss → fetches fresh data → repopulates
+Strategy 2 — Update in place:
+jsawait Product.update(...);
+await redis.set("product:123", JSON.stringify(updatedProduct));
+// immediate sync, no miss window, but two writes must stay in sync
+
+What NOT to Cache
+A common beginner mistake: "Redis is fast → cache everything." Wrong.
+Never cache:
+
+Bank balances / wallet amounts — a transfer updates the DB but not cache; user sees a wrong balance
+UPI / payment status — "pending" cached as "success" is catastrophic
+Live stock prices — changes faster than any reasonable TTL
+
+Cache freely:
+
+Movie/product metadata
+Search results, catalog listings
+Static config, feature flags
+
+Rule of thumb: cache data that is read-heavy, rarely mutated, and non-critical if slightly stale.
+
+Cache Stampede (Most Important Interview Topic)
+When a popular key expires, thousands of concurrent requests all get a cache miss simultaneously and hammer the origin at once. The origin can't handle the burst and crashes.
+Fix 1 — Distributed lock: First request acquires a Redis lock (SET lock:batman 1 EX 5 NX). All other requests wait. Only one origin call is made. Lock releases; everyone reads the newly-cached value.
+Fix 2 — Stale-while-revalidate: Serve the expired (stale) value immediately, refresh the cache in the background. Users never wait. Used by CDNs and large-scale systems.
+Fix 3 — TTL jitter: Add random variance to TTLs so popular keys don't all expire at the same time.
+jsconst ttl = 3600 + Math.random() * 360; // 3600–3960s
+
+Middleware Pattern
+Instead of duplicating cache logic in every route handler, extract it into middleware:
+jsasync function cacheMiddleware(req, res, next) {
+  const key = `movie:${req.query.query}`;
+  const cached = await redis.get(key);
+  if (cached) return res.json(JSON.parse(cached));
+  next();
+}
+
+app.get("/movies", cacheMiddleware, movieController);
+The controller stays clean and knows nothing about Redis. Add caching to any route by prepending the middleware.
+
+Redis Data Structures
+Most people only know String. Redis supports five main types:
+String — general caching, counters, flags
+jsredis.set("name", "Tridibesh")
+List — notification queues, activity feeds (ordered, allows duplicates)
+jsredis.lPush("notifications", "new message")
+Set — unique tags, visited-URL deduplication (no duplicates)
+jsredis.sAdd("skills", "NodeJS")
+Hash — user objects, config maps (like a nested object)
+jsredis.hSet("user:1", { name: "Tridibesh", age: 20 })
+Sorted Set — leaderboards, sliding-window rate limiting (members ranked by score)
+jsredis.zAdd("leaderboard", [{ score: 100, value: "user:1" }])
+
+Rate Limiting
+Classic backend interview pattern. Allow only 5 requests per minute per user:
+jsconst key = `rl:${userId}`;
+const count = await redis.incr(key);
+
+if (count === 1) await redis.expire(key, 60); // start 60s window on first hit
+if (count > 5) return res.status(429).json({ message: "Too many requests" });
+incr atomically increments a counter. If the key doesn't exist, it creates it at 0 then increments to 1. The expire is set only on the first hit so the window resets correctly.
+
+Session Storage
+js// Login
+await redis.set(`session:${userId}`, token, { EX: 86400 });
+
+// Logout — explicit invalidation
+await redis.del(`session:${userId}`);
+Why not just JWTs? JWTs can't be revoked before expiry. Storing session tokens in Redis gives you instant logout — just del the key.
+
+Quick Reference
+CommandUseredis.set(key, val, {EX:n})Store with TTLredis.get(key)Retrieveredis.del(key)Invalidateredis.ttl(key)Check remaining TTLredis.incr(key)Atomic counter incrementredis.expire(key, n)Set TTL on existing keyredis.exists(key)Check if key exists
+Golden rules:
+
+Always set a TTL
+Use namespaced keys (type:id)
+Invalidate or update cache on every write
+Never cache financial or real-time data
+Never forget JSON.stringify / JSON.parse
