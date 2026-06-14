@@ -1,1 +1,350 @@
 Pagination, Filtering, Searching (Scales or dies)
+
+
+
+
+Part 1: Pagination
+Pagination is how you avoid sending 10 million rows to the client. Two main strategies — offset-based and cursor-based — and they're not interchangeable.
+
+Offset-Based Pagination
+The classic approach. You skip N rows and take M.
+sqlSELECT * FROM posts
+ORDER BY created_at DESC
+LIMIT 20 OFFSET 40;  -- page 3, 20 items/page
+Your API receives ?page=3&limit=20, you compute offset = (page - 1) * limit, done.
+Why it feels simple and why that's a trap:
+The database doesn't actually skip rows cheaply. When you say OFFSET 40, Postgres has to read and discard 40 rows before returning your 20. At OFFSET 1000000, it reads and discards a million rows. This is a full sequential scan up to the offset point — the index might help with ordering, but the discard still happens.
+The phantom rows / shifting data problem:
+Imagine user is on page 2. Between the page 1 request and page 2 request, someone inserts a new row at the top. Every row shifts down by one. The user misses one item (the one that slipped from page 1 to page 2) and might see a duplicate (the last item of page 1 is now the first item of page 2). With deletions, it's the reverse.
+When offset-based is acceptable:
+
+Admin dashboards where data isn't real-time
+Small datasets (under 10k rows)
+When users genuinely navigate by page number (search engine results)
+When you need total page count (cursor-based can't give you this cheaply)
+
+
+Cursor-Based Pagination
+Instead of "give me rows 40–60", you say "give me 20 rows that come after this specific row". The cursor encodes a position in the dataset.
+sql-- First page (no cursor)
+SELECT * FROM posts
+ORDER BY created_at DESC, id DESC
+LIMIT 20;
+
+-- Returns rows, last row has: created_at = '2024-01-15 10:30:00', id = 8472
+
+-- Next page (with cursor)
+SELECT * FROM posts
+WHERE (created_at, id) < ('2024-01-15 10:30:00', 8472)
+ORDER BY created_at DESC, id DESC
+LIMIT 20;
+The cursor is typically the encoded (base64 or opaque) last value of your sort key from the previous page. The client gets back something like nextCursor: "eyJpZCI6ODQ3MiwiY3JlYXRlZF9hdCI6Ii4uLiJ9" and sends it in the next request.
+Why this actually scales:
+The WHERE (created_at, id) < (value, value) clause can be satisfied by an index seek. The database jumps directly to that position in the index and reads forward. No discarding. Cost is O(result size), not O(offset + result size).
+Implementation in Node.js/Prisma:
+typescriptasync function getPosts(cursor?: string, limit = 20) {
+  const decoded = cursor
+    ? JSON.parse(Buffer.from(cursor, 'base64').toString('utf-8'))
+    : null;
+
+  const posts = await prisma.post.findMany({
+    take: limit + 1,  // fetch one extra to determine if next page exists
+    cursor: decoded ? { id: decoded.id } : undefined,
+    skip: decoded ? 1 : 0,  // skip the cursor row itself
+    orderBy: [
+      { createdAt: 'desc' },
+      { id: 'desc' }
+    ],
+  });
+
+  const hasNextPage = posts.length > limit;
+  if (hasNextPage) posts.pop();  // remove the extra row
+
+  const nextCursor = hasNextPage
+    ? Buffer.from(JSON.stringify({
+        id: posts[posts.length - 1].id,
+        createdAt: posts[posts.length - 1].createdAt
+      })).toString('base64')
+    : null;
+
+  return { posts, nextCursor, hasNextPage };
+}
+Raw SQL version (row value comparison):
+sql-- Composite cursor using row value syntax
+SELECT id, title, created_at FROM posts
+WHERE (created_at, id) < ($1, $2)
+ORDER BY created_at DESC, id DESC
+LIMIT 20;
+This requires a composite index on (created_at DESC, id DESC).
+What cursor-based can't do:
+
+Jump to page 47 directly (you must traverse pages sequentially)
+Give you total count cheaply (SELECT COUNT(*) is a separate expensive query)
+Navigate backwards easily (requires storing previous cursors client-side)
+
+
+Stable Sorting Requirements
+This is where both approaches silently break without warning.
+The core problem: If your sort column has duplicate values, the ordering of rows with equal values is non-deterministic. Postgres can return them in any order, and that order can change between queries.
+sql-- BROKEN: created_at has many duplicates
+SELECT * FROM posts ORDER BY created_at DESC LIMIT 20;
+-- Page 1 might include row with id=500
+-- Page 2 might also include row with id=500 (same created_at, different order)
+The fix: always add a unique tiebreaker.
+sql-- CORRECT: id is unique, guarantees stable ordering
+SELECT * FROM posts ORDER BY created_at DESC, id DESC LIMIT 20;
+For cursor-based pagination, your cursor must encode all sort columns including the tiebreaker. If you only encode created_at and use it alone in the WHERE clause, you'll skip rows that share the same timestamp as the cursor row.
+sql-- BROKEN cursor query: skips rows with same created_at as cursor
+WHERE created_at < $cursor_time
+
+-- CORRECT: row value comparison handles ties properly
+WHERE (created_at, id) < ($cursor_time, $cursor_id)
+The row value comparison (a, b) < (x, y) means: a < x OR (a = x AND b < y). This correctly handles duplicates in the first sort column.
+
+Part 2: Filtering
+Dynamic Filters
+Users want to filter by status, date range, category, price, etc. — and in combination. You need to build queries dynamically without concatenating strings.
+The naive approach (SQL injection waiting to happen):
+javascript// NEVER do this
+const query = `SELECT * FROM products WHERE status = '${req.query.status}'`;
+Parameterized dynamic filters with raw SQL:
+typescriptinterface ProductFilters {
+  status?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  categoryId?: number;
+  search?: string;
+}
+
+async function getProducts(filters: ProductFilters, cursor?: string) {
+  const conditions: string[] = ['1=1'];  // base condition, always true
+  const params: any[] = [];
+  let paramIndex = 1;
+
+  if (filters.status) {
+    conditions.push(`status = $${paramIndex++}`);
+    params.push(filters.status);
+  }
+
+  if (filters.minPrice !== undefined) {
+    conditions.push(`price >= $${paramIndex++}`);
+    params.push(filters.minPrice);
+  }
+
+  if (filters.maxPrice !== undefined) {
+    conditions.push(`price <= $${paramIndex++}`);
+    params.push(filters.maxPrice);
+  }
+
+  if (filters.categoryId) {
+    conditions.push(`category_id = $${paramIndex++}`);
+    params.push(filters.categoryId);
+  }
+
+  const whereClause = conditions.join(' AND ');
+  const query = `
+    SELECT * FROM products
+    WHERE ${whereClause}
+    ORDER BY created_at DESC, id DESC
+    LIMIT 20
+  `;
+
+  return db.query(query, params);
+}
+Every value goes through parameterization. The condition strings themselves are hardcoded in your application — no user input ever becomes part of the SQL structure, only values in parameter slots.
+With Prisma (cleaner but same principle):
+typescriptasync function getProducts(filters: ProductFilters) {
+  const where: Prisma.ProductWhereInput = {};
+
+  if (filters.status) where.status = filters.status;
+
+  if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+    where.price = {};
+    if (filters.minPrice !== undefined) where.price.gte = filters.minPrice;
+    if (filters.maxPrice !== undefined) where.price.lte = filters.maxPrice;
+  }
+
+  if (filters.categoryId) where.categoryId = filters.categoryId;
+
+  return prisma.product.findMany({
+    where,
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: 20,
+  });
+}
+Prisma's query builder handles parameterization internally. You never concatenate user input.
+
+Avoiding SQL Injection
+SQL injection happens when user-controlled input alters the structure of the SQL query, not just its values.
+Classic injection:
+Input: ' OR '1'='1
+Query becomes: SELECT * FROM users WHERE password = '' OR '1'='1'
+Defense layers:
+1. Parameterized queries / prepared statements — primary defense. User input goes into parameter slots, never into the query string itself. The database driver separates data from SQL structure at the protocol level.
+typescript// Safe: $1 is a parameter slot
+db.query('SELECT * FROM users WHERE email = $1', [userInput]);
+
+// Unsafe: string interpolation
+db.query(`SELECT * FROM users WHERE email = '${userInput}'`);
+2. Whitelist for dynamic column/table names — parameterization only works for values, not identifiers (column names, table names, ORDER BY columns). If you need dynamic column names:
+typescriptconst ALLOWED_SORT_COLUMNS = ['created_at', 'price', 'name', 'updated_at'];
+const ALLOWED_SORT_DIRS = ['ASC', 'DESC'];
+
+function buildOrderBy(col: string, dir: string): string {
+  const safeCol = ALLOWED_SORT_COLUMNS.includes(col) ? col : 'created_at';
+  const safeDir = ALLOWED_SORT_DIRS.includes(dir.toUpperCase()) ? dir.toUpperCase() : 'DESC';
+  return `${safeCol} ${safeDir}`;
+}
+Never put user input directly into column or table name positions, even with parameterization — $1 is for values only, SELECT $1 FROM users doesn't let you parameterize the table name.
+3. ORM as an abstraction layer — Prisma, TypeORM, Sequelize all handle parameterization for you in their query builder APIs. But raw query escape hatches (prisma.$queryRawUnsafe, sequelize.query) still require manual care.
+typescript// Safe
+prisma.$queryRaw`SELECT * FROM users WHERE id = ${userId}`
+
+// UNSAFE — don't use this with user input
+prisma.$queryRawUnsafe(`SELECT * FROM users WHERE id = ${userId}`)
+$queryRaw with template literals is parameterized. $queryRawUnsafe with string concatenation is not.
+
+Performance Implications of Filtering
+Indexes must match your filter patterns.
+If users frequently filter by status and sort by created_at, you need:
+sqlCREATE INDEX idx_products_status_created ON products(status, created_at DESC);
+Without this, every filter query is a sequential scan. With this, Postgres seeks directly to the matching status values and reads them in order.
+Selectivity matters. An index on a boolean column (is_deleted) has low selectivity — half the rows match either value. Postgres might ignore the index and scan anyway because it's faster. High-selectivity indexes (on columns with many distinct values like user_id, email) give the most benefit.
+Composite filter problem: If you have a table with 5 filterable columns, you can't index every combination. Strategy:
+
+Index the most frequently used individual filters
+Index frequently used combinations
+Accept full scans for rarely used filter combinations
+Use partial indexes for filtered subsets (WHERE status = 'active')
+
+sql-- Partial index: only indexes active products
+-- Much smaller index, faster for the common case
+CREATE INDEX idx_active_products ON products(created_at DESC)
+WHERE status = 'active';
+COUNT(*) is expensive. Returning total count for pagination requires a separate full scan (with all your WHERE conditions). For large tables, consider:
+
+Approximate counts (pg_stat_user_tables gives estimates)
+Cached counts (update on insert/delete via triggers or application logic)
+Just not returning total count (cursor-based doesn't need it)
+
+
+Part 3: Searching
+ILIKE vs Full-Text Search
+ILIKE is case-insensitive pattern matching.
+sqlSELECT * FROM products WHERE name ILIKE '%laptop%';
+This works for small tables. For anything real, it's a disaster.
+Why %term% is expensive:
+The leading % wildcard means "match any prefix". Postgres cannot use a B-tree index to satisfy this — it has to read every single row and apply the pattern. This is always a sequential scan, regardless of indexes. On a million-row table, every search hits all million rows.
+A trailing wildcard term% (prefix search) can use a B-tree index because it's a range scan. %term% cannot.
+sql-- CAN use index (prefix search)
+WHERE name LIKE 'laptop%'
+
+-- CANNOT use index (substring search)
+WHERE name LIKE '%laptop%'
+WHERE name ILIKE '%laptop%'
+pg_trgm for ILIKE at scale:
+If you must do substring search and can't move to full-text, pg_trgm (trigram extension) can index substring patterns:
+sqlCREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX idx_products_name_trgm ON products USING gin(name gin_trgm_ops);
+
+-- Now this CAN use the index
+SELECT * FROM products WHERE name ILIKE '%laptop%';
+Trigrams split the string into 3-character overlapping chunks and index them. The index intersection finds rows with matching trigrams. Still not as powerful as full-text search but much better than sequential scan.
+
+Full-Text Search in Postgres
+Postgres has built-in FTS using tsvector (indexed document) and tsquery (search query).
+How it works:
+A tsvector is a preprocessed representation of text — tokenized, stemmed, stop words removed. "running" and "runs" become the same lexeme. "the", "a", "is" get dropped.
+sqlSELECT to_tsvector('english', 'The quick brown fox jumps over the lazy dog');
+-- Result: 'brown':3 'dog':9 'fox':4 'jump':5 'lazi':8 'quick':2
+-- Note: 'the', 'over' removed (stop words), 'jumps' → 'jump' (stemmed)
+tsquery is your parsed search query:
+sqlSELECT to_tsquery('english', 'laptop & gaming');    -- both terms
+SELECT to_tsquery('english', 'laptop | notebook');  -- either term
+SELECT plainto_tsquery('english', 'gaming laptop'); -- phrase input → laptop & gaming
+SELECT websearch_to_tsquery('english', '"gaming laptop" OR notebook'); -- Google-style
+Setting up FTS:
+sql-- Option 1: Generated column (computed on write, indexed)
+ALTER TABLE products
+ADD COLUMN search_vector tsvector
+GENERATED ALWAYS AS (
+  to_tsvector('english', coalesce(name, '') || ' ' || coalesce(description, ''))
+) STORED;
+
+CREATE INDEX idx_products_fts ON products USING gin(search_vector);
+
+-- Query
+SELECT * FROM products
+WHERE search_vector @@ websearch_to_tsquery('english', 'gaming laptop')
+ORDER BY ts_rank(search_vector, websearch_to_tsquery('english', 'gaming laptop')) DESC;
+ts_rank gives you relevance scoring — rows where the term appears more often or in important fields rank higher.
+Option 2: Weighted search (title matches count more than description):
+sqlALTER TABLE products
+ADD COLUMN search_vector tsvector
+GENERATED ALWAYS AS (
+  setweight(to_tsvector('english', coalesce(name, '')), 'A') ||
+  setweight(to_tsvector('english', coalesce(description, '')), 'B') ||
+  setweight(to_tsvector('english', coalesce(brand, '')), 'C')
+) STORED;
+Weight A ranks highest, D lowest. ts_rank considers weights when scoring.
+In Prisma (raw query for FTS):
+typescriptasync function searchProducts(query: string, cursor?: string) {
+  const searchQuery = query
+    .trim()
+    .split(/\s+/)
+    .join(' & ');  // simple AND of terms
+
+  return prisma.$queryRaw<Product[]>`
+    SELECT id, name, description, price,
+           ts_rank(search_vector, to_tsquery('english', ${searchQuery})) as rank
+    FROM products
+    WHERE search_vector @@ to_tsquery('english', ${searchQuery})
+    ORDER BY rank DESC, id DESC
+    LIMIT 20
+  `;
+}
+
+Combining Search with Filters and Pagination
+The real challenge — you need all three at once:
+sqlSELECT
+  id, name, price, status, category_id,
+  ts_rank(search_vector, query) as rank
+FROM products,
+  websearch_to_tsquery('english', $1) query
+WHERE
+  search_vector @@ query
+  AND status = $2
+  AND price BETWEEN $3 AND $4
+ORDER BY rank DESC, id DESC
+LIMIT 20;
+For cursor-based pagination with ranking, you need to encode the rank in the cursor too, since you're ordering by a computed value:
+typescript// Cursor encodes: { rank: number, id: number }
+// Next page condition: (rank, id) < (cursor_rank, cursor_id)
+This gets complex fast. Many teams drop cursor-based pagination for search results and use offset — because users rarely paginate past page 5 of search results anyway, so the performance cliff doesn't matter in practice.
+
+When NOT to Use Search
+Full-text search in Postgres is powerful but has real limits.
+Don't use it when:
+
+You need fuzzy/typo-tolerant matching — FTS doesn't handle "laaptop" → "laptop". For this, you need pg_trgm similarity or a dedicated search engine.
+You need faceted search with dynamic counts — "show me how many results exist per category" requires expensive aggregations alongside FTS queries.
+Your search corpus is enormous (tens of millions of rows) and you need sub-100ms response times consistently. Postgres FTS doesn't parallelize across nodes.
+You need autocomplete/suggestions as-you-type — FTS is too slow for this; you need Redis or a dedicated prefix index.
+You need semantic/vector search — FTS is keyword-based. "cheap laptop" won't match "budget notebook" without synonyms configured.
+
+Use Elasticsearch/OpenSearch/Meilisearch when:
+
+You need typo tolerance built-in
+You need faceted filters with counts
+You need autocomplete
+You're searching across multiple tables/indexes simultaneously
+You need language-specific analyzers beyond what Postgres ships with
+Latency requirements are strict at large scale
+
+The general rule: Postgres FTS handles 80% of search requirements and is operationally free (you already have Postgres). Reach for a dedicated search engine only when you hit concrete limitations, not preemptively.
+
+Interview-Critical Mental Model
+Pagination: "Offset doesn't scale past ~10k rows due to discard cost and data drift. Cursor-based is O(result) not O(offset + result), but loses random access and total counts. Always sort with a unique tiebreaker for stable ordering."
+Filtering: "User input goes only into parameter slots, never into SQL structure. Dynamic identifiers (column names) get whitelisted from a hardcoded allowed list. Index design must match actual filter patterns — composite indexes for multi-column filters, partial indexes for filtered subsets."
+Searching: "%term% is always a sequential scan. pg_trgm adds GIN index for substring search. Postgres FTS with tsvector/tsquery gives stemming, ranking, and GIN-indexed performance. Reach for external search engines when you need typo tolerance, facets, or semantic search."
+The failure mode everyone makes: building ILIKE-based search on launch because it's easy, hitting 100ms → 5s degradation at 500k rows, then having to migrate to FTS under production load. Set up FTS from day one if search is a core feature.
