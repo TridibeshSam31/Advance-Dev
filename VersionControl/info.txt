@@ -1,0 +1,213 @@
+what is Git ???
+
+Git = Time Machine for code.
+
+ar snapshot ko Git ek Commit bolta hai.
+
+Commit A
+   ↓
+Commit B
+   ↓
+Commit C
+
+Tu kisi bhi commit pe wapas ja sakta hai.
+
+
+Architecture of Git 
+
+Working Directory
+        ↓
+Staging Area
+        ↓
+Repository
+
+
+
+what is working Directory ????
+
+Jo files tu VS Code me edit karta hai.
+
+Example:
+
+console.log("Hello");
+
+Abhi save kiya.
+
+Git ko nahi pata.
+
+File sirf machine pe hai.
+
+
+
+Staging Area
+
+Tu bolta hai:
+
+git add index.js
+
+Meaning:
+
+Git bhai,
+ye change mujhe next commit me chahiye.
+
+Ab file staging me aa gayi.
+
+
+
+Repository
+git commit -m "Add hello world"
+
+Ab permanent snapshot create.
+
+Working
+    ↓
+Add
+    ↓
+Staging
+    ↓
+Commit
+    ↓
+Repository
+
+
+
+
+
+What is the difference between git add and git commit ??
+
+git add = prepare changes
+
+git commit = save snapshot permanently
+
+
+
+
+What Actually Is A Commit?
+
+
+
+Commit sirf message nahi hota.
+
+Commit contains:
+
+Files snapshot
+Author
+Date
+Commit Message
+Commit Hash
+
+Example:
+
+git log
+
+Output:
+
+e8a4c7d
+
+Ye hash hai.
+
+Unique ID.
+
+Git internally commits ko linked list jaisa maintain karta hai.
+
+A → B → C → D
+
+Current commit pe HEAD pointer hota hai.
+
+A → B → C → D (HEAD)
+
+HEAD = current location.
+
+
+
+
+
+Branching in Git 
+
+Maan le production app chal rahi hai.
+
+main
+
+Ab tu login feature banana chahta hai.
+
+Direct main me code karega?
+
+Nahi.
+
+Branch banaega.
+
+git checkout -b feature/login
+
+Internally:
+
+main
+  │
+  └── feature/login
+
+Ab tu kuch bhi tod-phod kar sakta hai.
+
+Because of this main branch remains safe 
+
+
+
+What is Merge ??
+
+
+Feature complete.
+
+git checkout main
+git merge feature/login
+
+Git dono histories combine karta hai.
+
+Before:
+
+A → B
+
+      C → D
+
+After:
+
+A → B → E
+       ↗
+     C → D
+
+E = Merge Commit.
+
+
+
+How merge Confict arises ???
+
+
+
+Tu:
+
+const role = "Admin";
+
+Aur teammate:
+
+const role = "User";
+
+Dono same line modify.
+
+Git confuse.
+
+Kiska code rakhu?
+
+Conflict.
+
+File:
+
+<<<<<<< HEAD
+Admin
+=======
+User
+>>>>>>> feature
+
+Developer resolve karta hai.
+
+Git khud intelligent nahi hai.
+
+
+How to resolve merge confilct ???
+

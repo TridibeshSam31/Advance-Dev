@@ -348,3 +348,5 @@ Pagination: "Offset doesn't scale past ~10k rows due to discard cost and data dr
 Filtering: "User input goes only into parameter slots, never into SQL structure. Dynamic identifiers (column names) get whitelisted from a hardcoded allowed list. Index design must match actual filter patterns — composite indexes for multi-column filters, partial indexes for filtered subsets."
 Searching: "%term% is always a sequential scan. pg_trgm adds GIN index for substring search. Postgres FTS with tsvector/tsquery gives stemming, ranking, and GIN-indexed performance. Reach for external search engines when you need typo tolerance, facets, or semantic search."
 The failure mode everyone makes: building ILIKE-based search on launch because it's easy, hitting 100ms → 5s degradation at 500k rows, then having to migrate to FTS under production load. Set up FTS from day one if search is a core feature.
+
+
