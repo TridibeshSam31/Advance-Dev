@@ -1,0 +1,258 @@
+what is Bash ???
+
+Bash = Bourne Again Shell.
+
+Jab tu terminal me likhta hai:
+
+node app.js
+
+Actually Bash:
+
+1.Command parse karta hai
+2.Process create karta hai
+3 .Program execute karta hai
+4.Output return karta hai
+
+
+You
+ ↓
+Bash
+ ↓
+Linux Kernel
+ ↓
+Program
+
+
+
+what are Variables ???
+
+name="Tridibesh"
+
+echo $name
+
+output will be Tridibesh 
+
+
+
+how to give Input in Bash Scripting ???
+
+
+read name
+
+echo $name
+
+
+Output:
+
+Enter:
+Tridibesh
+
+Tridibesh
+
+Useful for automation scripts.
+
+
+
+
+conditions statements in bash Scripting 
+
+
+if
+
+
+age=20
+
+if [ $age -gt 18 ]
+then
+   echo "Adult"
+fi
+
+
+Operators:
+
+-eq
+-ne
+-gt
+-lt
+-ge
+-le
+
+Examples:
+
+if [ -f app.js ] // it checks whether this file exist or not 
+
+
+
+Real DevOps Example
+
+if [ ! -d node_modules ]
+then
+   npm install
+fi
+
+Meaning:
+
+If node_modules doesn't exist
+Install dependencies
+
+
+
+
+
+Loops in Bash Scripting ??
+
+For loop
+
+
+for i in 1 2 3 4 5
+do
+   echo $i
+done
+
+
+output 
+
+1
+2
+3
+4
+5
+
+
+
+Real Use
+
+Restart multiple services:
+
+for service in auth payment user
+do
+   systemctl restart $service
+done
+
+
+
+ While Loop
+count=1
+
+while [ $count -le 5 ]
+do
+   echo $count
+   count=$((count+1))
+done
+
+Used in polling systems.
+
+Example:
+
+Wait until database is ready.
+
+
+
+Functions in Bash Scripting 
+
+deploy() {
+   echo "Building..."
+   npm run build
+
+   echo "Starting..."
+   pm2 restart app
+}
+
+deploy
+
+
+
+Output:
+
+Building...
+Starting...
+
+
+
+
+Exit Codes used while Bash Scripting ??
+Every command returns:
+
+0 = success
+non-zero = failure
+
+Example:
+
+npm install
+echo $?
+
+Output:
+
+0
+
+Success.
+
+Use:
+
+if [ $? -eq 0 ]
+then
+   echo "Success"
+else
+   echo "Failed"
+fi
+
+DevOps engineers use this constantly.
+
+Phase 9: Pipes (MOST IMPORTANT TOPIC)
+
+Command output → next command input.
+
+cat logs.txt | grep ERROR
+
+Meaning:
+
+Read logs
+Send output
+Filter ERROR
+
+Output:
+
+ERROR Database connection failed
+
+Real Production:
+
+pm2 logs | grep ERROR
+
+Find errors quickly.
+
+
+
+Redirection 
+
+
+
+Overwrite
+echo "Hello" > file.txt
+Append
+echo "World" >> file.txt
+
+Useful:
+
+npm run build > build.log
+
+Store logs.
+
+
+
+
+Grep Command in Bash Scripting 
+
+Search text.
+
+grep ERROR app.log
+
+Output:
+
+ERROR DB connection failed
+
+Case insensitive
+
+grep -i error app.log
+
+Backend engineers use grep daily.
+
