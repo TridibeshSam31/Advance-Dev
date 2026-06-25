@@ -211,3 +211,245 @@ Git khud intelligent nahi hai.
 
 How to resolve merge confilct ???
 
+
+
+What is Github ???
+
+Most people confuse.
+
+Git ≠ GitHub
+
+Git:
+
+Version Control System
+
+GitHub:
+
+Cloud Storage For Git Repositories
+
+Example:
+
+Laptop crash.
+
+Git repository gayi.
+
+GitHub pe push kiya hai?
+
+Safe.
+
+
+
+
+What is Push ???
+
+Local:
+
+Laptop
+
+Remote:
+
+GitHub
+
+Push means:
+
+git push
+
+Translation:
+
+Mera local code
+GitHub pe upload kar do
+
+
+what is pull???
+
+Someone changed code.
+
+Tu old version pe hai.
+
+git pull
+
+Translation:
+
+Latest code lao
+aur merge bhi karo
+
+Internally:
+
+fetch + merge
+
+
+
+what is Fetch ???
+
+
+
+git fetch 
+
+Difference:
+
+Fetch:
+
+Sirf download
+
+Pull:
+
+Download + merge
+
+
+
+what is Rebase ??
+
+Suppose:
+
+Main:
+
+A → B → C
+
+Feature:
+
+A → B → D → E
+
+Now main updated:
+
+A → B → C → F
+
+Rebase:
+
+git rebase main
+
+Result:
+
+A → B → C → F → D → E
+
+History linear.
+
+Cleaner.
+
+Companies prefer rebase workflow.
+
+
+
+what is Stash ???
+
+Manager:
+
+Urgent bug fix karo
+
+Tu half-done feature pe hai.
+
+Commit nahi karna.
+
+Use:
+
+git stash
+
+Git temporary drawer me changes rakh deta hai.
+
+Drawer
+
+Baad me:
+
+git stash pop
+
+Restore.
+
+
+
+what is Reset ????
+
+
+Danger Zone.
+
+git reset --soft HEAD~1
+
+Remove commit.
+
+Keep code.
+
+git reset --hard HEAD~1
+
+Remove commit.
+
+Remove code.
+
+Everything gone.
+
+
+
+
+what is Revert
+
+Safer than reset.
+
+git revert hash
+
+Instead of deleting history:
+
+A → B → C → D
+
+Git creates:
+
+A → B → C → D → E
+
+E = reverse of D.
+
+Production standard.
+
+
+what is the cycle of Puil Request ????
+
+Open Source ka heart.
+
+Flow:
+
+Fork Repo
+     ↓
+Create Branch
+     ↓
+Code Change
+     ↓
+Push
+     ↓
+Open PR
+     ↓
+Review
+     ↓
+Merge
+
+
+
+
+
+what is the use of Git for Devops Prospective ???
+
+DevOps engineers Git ko code ke liye nahi.
+
+Infrastructure ke liye use karte hain.
+
+Example:
+
+Dockerfile
+k8s.yaml
+terraform.tf
+nginx.conf
+
+Everything in Git.
+
+Flow:
+
+Push
+ ↓
+GitHub Actions
+ ↓
+Docker Build
+ ↓
+Deploy
+
+Entire deployment Git driven.
+
+Isko bolte hain:
+
+GitOps
+
+
+
