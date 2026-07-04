@@ -256,3 +256,174 @@ grep -i error app.log
 
 Backend engineers use grep daily.
 
+
+find in bash Scripting
+
+Find files.
+
+find . -name "*.js"
+
+Output:
+
+./src/app.js
+./src/routes/user.js
+
+
+Find logs:
+
+find . -name "*.log"
+
+
+
+awk in Bash Scripting
+
+Extract columns.
+
+Log:
+
+John 25
+Mike 30
+
+Command:
+
+awk '{print $1}'
+
+Output:
+
+John
+Mike
+
+Real:
+
+docker ps | awk '{print $1}'
+
+Get container IDs.
+
+
+
+Replace text.
+
+sed 's/dev/prod/g' config.txt
+
+Output:
+
+prod
+
+Useful in CI/CD.
+
+
+
+ Process Management
+
+See running processes:
+
+ps aux
+
+Search:
+
+ps aux | grep node
+
+
+
+Kill:
+
+kill PID
+
+Force:
+
+kill -9 PID
+
+
+ Permissions
+chmod +x deploy.sh
+
+Meaning:
+
+Make script executable
+
+Run:
+
+./deploy.sh
+
+
+Cron Jobs
+
+Run automatically.
+
+Open:
+
+crontab -e
+
+Run every day:
+
+0 2 * * * backup.sh
+
+Meaning:
+
+2 AM daily
+
+Used for:
+
+DB backup
+Cleanup
+Reports
+Email jobs
+
+
+Real Backend Project Scripts
+
+Deployment Script
+#!/bin/bash
+
+git pull
+
+npm install
+
+npm run build
+
+pm2 restart app
+
+Run:
+
+./deploy.sh
+Database Backup
+#!/bin/bash
+
+pg_dump mydb > backup.sql
+
+Schedule with cron.
+
+Log Cleanup
+find /logs -name "*.log" -mtime +7 -delete
+
+Delete logs older than 7 days.
+
+Phase 19: Bash + Docker
+
+Stop all containers:
+
+docker stop $(docker ps -q)
+
+Remove all containers:
+
+docker rm $(docker ps -aq)
+
+Backend + DevOps engineers use these frequently.
+
+
+
+Bash + CI/CD
+
+GitHub Actions:
+
+- run: npm install
+- run: npm test
+- run: npm run build
+
+Under the hood:
+
+npm install
+npm test
+npm run build
+
+Every CI/CD pipeline is basically executing Bash commands.
