@@ -1,7 +1,0 @@
-we use it when someone has to directly communicate with  the backend without connecting to the frontend 
-
-swagger ui that converts express api routes to ui format or basically documentation format 
-
-adding express code example of openApiSpec Yaml files
-
-
