@@ -1,3 +1,0 @@
-what are monorepos and turborepo 
-is this foldure structure really necessary 
-what is the use of this 
