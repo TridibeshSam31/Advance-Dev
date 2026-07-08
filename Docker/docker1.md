@@ -239,3 +239,89 @@ All four app images reference the same base layer on disk instead of duplicating
 - **CodeArena**: you already made the deliberate call to use Docker-based sandboxed execution over Judge0. Good follow-up talking point — mention that your Dockerfile for the execution environment separates dependency installation from user-submitted code copying, so the sandbox image builds fast and consistently.
 - **LogVerse / general deployment**: if you containerize the Hono backend at any point, the same `COPY package.json` → `RUN install` → `COPY . .` pattern applies directly.
 - Good line for interviews: *"I structure Dockerfiles so dependency layers are cached separately from app-code layers — cuts rebuild time from minutes to seconds in local dev."* Shows you understand *why*, not just the syntax.
+
+---
+
+## 12. Docker Commands — Cheat Sheet
+
+| Command | Purpose | Example |
+|---|---|---|
+| `docker run` | Create + start a container from an image | `docker run -p 8080:80 nginx` |
+| `docker ps` | List running containers (`-a` for all, incl. stopped) | `docker ps -a` |
+| `docker images` | List locally available images | `docker images` |
+| `docker build` | Build an image from a Dockerfile | `docker build -t my-image .` |
+| `docker pull` | Download an image from a registry | `docker pull ubuntu` |
+| `docker push` | Push an image to a registry | `docker push my-image` |
+| `docker stop` | Stop a running container | `docker stop my-container` |
+| `docker start` | Start a stopped container | `docker start my-container` |
+| `docker rm` | Remove one or more containers | `docker rm my-container` |
+| `docker rmi` | Remove one or more images | `docker rmi my-image` |
+| `docker exec` | Run a command inside a running container | `docker exec -it my-container bash` |
+| `docker logs` | View a container's logs | `docker logs my-container` |
+| `docker network` | Manage networks | `docker network create my-network` |
+| `docker volume` | Manage volumes | `docker volume create my-volume` |
+
+**Notes on `-p 8080:80`**: format is `host_port:container_port`. Requests to `localhost:8080` on your machine get forwarded to port `80` inside the container.
+
+**Notes on `docker exec -it`**: `-i` (interactive, keeps STDIN open) + `-t` (allocates a pseudo-TTY) together give you a usable interactive shell inside a running container — useful for debugging a live container without stopping it.
+
+---
+
+## 13. Pushing Images to Docker Hub — Full Workflow
+
+### One-time setup
+1. Create an account at hub.docker.com.
+2. Create a repository (Repositories → Create Repository), set visibility (public/private).
+3. Log in from CLI:
+   ```bash
+   docker login
+   ```
+   If 2FA is enabled, use a Docker Hub **access token** instead of your password.
+
+### Tag → Push cycle
+Docker Hub identifies images by `username/reponame:tag` — a locally built image needs to be tagged into that namespace before it can be pushed.
+
+```bash
+# Option A: tag an already-built image
+docker tag your_image_name your_username/your_reponame:tagname
+docker push your_username/your_reponame:tagname
+
+# Option B: build directly with the target tag
+docker build -t your_username/your_reponame:tagname .
+docker push your_username/your_reponame:tagname
+```
+
+### Running the pushed image anywhere
+```bash
+docker run -p 3000:3000 your_username/your_reponame:tagname
+```
+Docker pulls the image automatically if it isn't already present locally, then starts the container.
+
+---
+
+## 14. Image Tags & Versioning
+
+- Tags let you keep multiple versions of the same image in one repository — conceptually similar to Git tags/branches.
+- Common convention: `v1`, `v2`, `latest`, `dev`, `staging`.
+- Re-tagging + pushing a specific version:
+  ```bash
+  docker tag your_image_name your_username/your_reponame:v1
+  docker push your_username/your_reponame:v1
+  ```
+- **Gotcha to remember for interviews**: `latest` is just a tag by convention, not a special "always newest" pointer — if you don't explicitly tag/push a new `latest`, it won't auto-update. Relying on `latest` in production is generally discouraged; pin explicit version tags instead for reproducible deploys.
+
+---
+
+## 15. Extra Interview Q&A (Commands + Hub)
+
+**Q11. What's the difference between `docker stop` and `docker rm`?**
+> `stop` halts a running container's process (container still exists, can be restarted with `docker start`). `rm` deletes the container entirely — you'd need to `docker run` a fresh one afterward.
+
+**Q12. Why do you need both `-i` and `-t` with `docker exec`?**
+> `-i` keeps STDIN open so you can send input; `-t` allocates a TTY so the shell renders properly (prompts, colors, line editing). Without `-t` it works but feels like a raw pipe; without `-i` you can't type anything in.
+
+**Q13. Why tag an image before pushing?**
+> Docker Hub routes pushes based on the `username/reponame:tag` naming convention embedded in the tag — an untagged or default-named image has no way to be associated with your Hub repository.
+
+**Q14. What happens if you `docker run` an image that isn't available locally?**
+> Docker automatically pulls it from the configured registry (Docker Hub by default) first, then starts the container — same as running `docker pull` followed by `docker run`.
