@@ -15,6 +15,7 @@ wss.on("connection",(socket)=>{
     socket.on("message",(message)=>{
         //@ts-ignore
         const parsedMesssage = JSON.parse(message);
+        //console.log(parsedMesssage)
         if(parsedMesssage.type === "join"){
             allSockets.push({
                 socket,

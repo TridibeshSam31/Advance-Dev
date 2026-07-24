@@ -148,7 +148,7 @@ Network Handshake Per Request
 
 HTTP:
 
-Request → handshake → response → close
+Request → handshake → response → close //it forgets also thats why they  are stateless the are needed to make remeber abt their tasks 
 Repeat again and again.
 
 WebSocket:
