@@ -1,238 +1,270 @@
-# CI/CD Fundamentals
+# CI/CD Fundamentals --- Practical + Code-First Notes
 
-## 1. CI/CD Actually Hota Kya Hai?
+> **Goal:** Understand CI/CD deeply enough to design and debug a
+> pipeline yourself, not just copy a GitHub Actions YAML file.
+>
+> **Practical project used:** `hingeprofile` --- a Next.js application
+> deployed on Vercel.
 
-CI/CD ko ek **software delivery pipeline** samajh.
+------------------------------------------------------------------------
 
-Tu code likhta hai:
+# 1. CI/CD Actually Hota Kya Hai?
 
-```
-Code → Test → Build → Package → Deploy → Monitor
-```
+CI/CD is a **software delivery practice** that automates and
+standardizes the path from source code to a validated/deployed
+application.
 
-**CI/CD ka purpose hai is process ko automatic, repeatable aur reliable banana** — manual steps hata ke, taaki har deployment consistent ho, kisi ke mood ya thakaan pe depend na kare.
+A useful mental model:
 
-**Without CI/CD:**
-
-```
-You
- ↓
-Code change
- ↓
-git push
- ↓
-Manually test
- ↓
-Manually build
- ↓
-Manually upload/deploy
- ↓
-😵‍💫
-```
-
-**With CI/CD:**
-
-```
-You
- ↓
-git push
- ↓
-GitHub
- ↓
-GitHub Actions
- ↓
-Test
- ↓
+``` text
+Code
+  ↓
+Validate
+  ↓
 Build
- ↓
+  ↓
+Package
+  ↓
 Deploy
- ↓
+  ↓
+Monitor
+```
+
+The exact stages depend on the project. CI/CD does **not** mean every
+project must use Docker, Kubernetes, AWS, etc.
+
+The core goal is:
+
+-   automatic
+-   repeatable
+-   reliable
+-   fast feedback
+-   fewer manual mistakes
+
+## Without CI/CD
+
+``` text
+Developer
+   ↓
+Code change
+   ↓
+git push
+   ↓
+Manual testing
+   ↓
+Manual build
+   ↓
+Manual deployment
+   ↓
+Hope nothing breaks
+```
+
+## With CI/CD
+
+``` text
+Developer
+   ↓
+git push / Pull Request
+   ↓
+GitHub
+   ↓
+CI pipeline
+   ↓
+Lint / Test / Build
+   ↓
+PASS
+   ↓
+Delivery / Deployment
+   ↓
 Production
 ```
 
-## 2. CI = Continuous Integration
+------------------------------------------------------------------------
 
-Integration ka matlab hai developers ka code regularly main codebase ke saath integrate hona.
+# 2. CI = Continuous Integration
 
-Maan le tu aur tera friend messaging app pe kaam kar rahe ho.
+## Definition
 
-**You:**
+Continuous Integration means developers integrate changes into a shared
+codebase frequently, while automated checks validate those changes.
 
-```
-feature/chat-ui
-```
+The key idea is **fast feedback**.
 
-**Friend:**
-
-```
-feature/file-upload
-```
-
-Dono changes eventually main mein aayenge.
-
-**Problem:**
-
-```
-Your code + Friend's code
+``` text
+Developer creates change
         ↓
-      Merge
+Pull Request
         ↓
-      💥
-```
-
-**CI ka job hai merge hone se pehle automatically verify karna ki code break toh nahi hua.**
-
-Typical flow:
-
-```
-Developer creates PR
+CI
         ↓
-GitHub Actions starts
-        ↓
-npm ci
-        ↓
-Lint
-        ↓
-Tests
-        ↓
-Build
+Lint / Tests / Build
         ↓
 PASS / FAIL
 ```
 
-Agar:
+If CI fails, the developer fixes the problem before the change becomes
+part of the stable codebase.
 
+## Why CI exists
+
+Imagine two developers:
+
+``` text
+Developer A → feature/chat-ui
+Developer B → feature/file-upload
 ```
+
+Without automated validation:
+
+``` text
+A + B
+ ↓
+Merge
+ ↓
+💥 something breaks
+```
+
+With CI:
+
+``` text
+Feature branch
+      ↓
+Pull Request
+      ↓
+CI
+ ├── lint
+ ├── tests
+ └── build
+      ↓
 PASS ✅
-```
-
-PR merge ho sakta hai.
-
-Agar:
-
-```
-FAIL ❌
-```
-
-Tu code fix karta hai.
-
-## 3. CI Ka Real-World Example — Tera Messaging Platform
-
-Maan le tu `Client/src/components/Chat.jsx` modify karta hai.
-
-```bash
-git add .
-git commit -m "fix chat UI"
-git push
-```
-
-GitHub dekhta hai:
-
-```
-push happened
-```
-
-aur start karta hai:
-
-```
-GitHub Actions
       ↓
-Checkout repository
-      ↓
-Install Node
-      ↓
-cd Client
-      ↓
-npm ci
-      ↓
-npm run lint
-      ↓
-npm run build
+Merge
 ```
 
-Tere Client mein already:
+------------------------------------------------------------------------
 
-```json
-"build": "tsc -b && vite build",
-"lint": "eslint ."
+# 3. CI Is Not "Green Tick Generator"
+
+This is one of the most important lessons.
+
+A CI pipeline is useful only if it can **fail for meaningful reasons**.
+
+Bad approach:
+
+``` yaml
+continue-on-error: true
 ```
 
-available hain.
+or disabling important lint rules just to get:
 
-Toh CI naturally in commands ko use kar sakta hai — koi naya script tujhe likhna nahi padega, jo already exist karte hain unhi ko pipeline mein call karna hai.
-
-## 4. CI Mein "Build" Ka Matlab Kya Hai?
-
-Ye important hai.
-
-Development mein tu karta hai:
-
-```bash
-npm run dev
+``` text
+✅ CI passed
 ```
 
-Lekin production ke liye development server nahi chahiye.
+Good approach:
 
-Vite application ko **production assets** mein convert karta hai:
-
-```
-React + TypeScript + CSS
-          ↓
-      Vite build
-          ↓
-dist/
-├── index.html
-├── assets/
-│   ├── index-abc.js
-│   └── index-def.css
+``` text
+CI fails
+   ↓
+Read logs
+   ↓
+Understand problem
+   ↓
+Fix code
+   ↓
+Run CI again
 ```
 
-Toh:
+### Real example from hingeprofile
 
-```bash
-npm run build
+Our first CI run failed during linting.
+
+The pipeline reported:
+
+``` text
+10 problems
+6 errors
+4 warnings
 ```
 
-verify karta hai ki application production build bana sakti hai ya nahi — ye ek safety check hai ki teri codebase deployable state mein hai.
+The errors included:
 
-## 5. CD = Continuous Delivery / Continuous Deployment
+``` text
+useMobile.ts
+setState inside effect
 
-Yahan confusion hota hai — dono naam similar sound karte hain lekin alag matlab.
+PersonalityProfile.ts
+2 × explicit any
 
-CD ke do common meanings hain:
-
-### Continuous Delivery
-
-Code automatically **production-ready** banaya jaata hai.
-
+photoNormalizer.ts
+3 × prefer-const
 ```
-Code
- ↓
-Test
- ↓
+
+The correct response was **not** to weaken ESLint.
+
+We fixed the code and reran the pipeline.
+
+Result:
+
+``` text
+CI / build-and-lint
+Successful in 44s
+```
+
+That is the real value of CI: **it caught problems before we considered
+the pipeline complete.**
+
+------------------------------------------------------------------------
+
+# 4. CI vs CD
+
+## CI
+
+CI asks:
+
+> **"Is this code safe to integrate?"**
+
+Typical CI work:
+
+``` text
+Install dependencies
+        ↓
+Lint
+        ↓
+Type checking
+        ↓
+Tests
+        ↓
 Build
- ↓
-Package
- ↓
-Ready for deployment
 ```
 
-Lekin actual production deployment mein zarurat pad sakti hai:
+## Continuous Delivery
 
-```
-      Manual approval
-            ↓
-       Production
-```
+The system automatically gets the application into a **production-ready
+state**, but production release may still require approval.
 
-### Continuous Deployment
-
-Yahan deployment bhi automatic.
-
-```
+``` text
 Code
  ↓
-Test
+CI
+ ↓
+Build/package
+ ↓
+Ready to deploy
+ ↓
+Manual approval
+ ↓
+Production
+```
+
+## Continuous Deployment
+
+Deployment itself is automatic.
+
+``` text
+Code
+ ↓
+CI
  ↓
 Build
  ↓
@@ -241,99 +273,61 @@ Deploy automatically
 Production
 ```
 
-**Tere portfolio project ke liye, Continuous Deployment zyada impressive hai** — recruiter ko dikhta hai ki teri pipeline sach mein end-to-end automated hai.
+### Important distinction
 
-## 6. CI/CD Ko Ek Factory Samajh
+CI/CD is the **practice/process**.
 
-Ye analogy yaad rakh — ye interview mein bhi kaam aayegi.
+GitHub Actions is a **tool** used to implement it.
 
-Socho ek Amazon factory.
+Other CI/CD tools include:
 
-Tu deta hai:
+-   GitHub Actions
+-   GitLab CI/CD
+-   Jenkins
+-   CircleCI
+-   Azure DevOps
+-   Buildkite
 
-```
-RAW MATERIAL = CODE
-```
+Interview answer:
 
-Factory:
+> "CI/CD is a software engineering practice for automating integration,
+> validation, delivery and deployment. GitHub Actions is the automation
+> platform I use to implement that pipeline."
 
-```
-┌──────────────────────┐
-│      CODE PUSH       │
-└──────────┬───────────┘
-           ↓
-┌──────────────────────┐
-│       QUALITY        │
-│        CHECK         │
-│   lint + tests       │
-└──────────┬───────────┘
-           ↓
-┌──────────────────────┐
-│        BUILD         │
-│  production artifact │
-└──────────┬───────────┘
-           ↓
-┌──────────────────────┐
-│       PACKAGE        │
-│       Docker         │
-└──────────┬───────────┘
-           ↓
-┌──────────────────────┐
-│       DEPLOY         │
-└──────────┬───────────┘
-           ↓
-       PRODUCTION
+------------------------------------------------------------------------
+
+# 5. GitHub Actions
+
+GitHub Actions lets us define automated workflows that run in response
+to GitHub events.
+
+The workflow configuration lives in:
+
+``` text
+.github/
+└── workflows/
+    └── ci.yml
 ```
 
-```
-CI = quality control
-CD = getting the product to customers
-```
+A workflow has three core levels:
 
-## 7. GitHub Actions Kya Hai?
-
-Ab sawaal:
-
-> Ye automation actually karega kaun?
-
-**GitHub Actions.**
-
-GitHub Actions ek automation platform hai.
-
-Tu GitHub ko bolta hai:
-
-```
-Jab main mein push ho, ye commands run karna.
+``` text
+Workflow
+   ↓
+Jobs
+   ↓
+Steps
 ```
 
-Ya:
+------------------------------------------------------------------------
 
-```
-Jab Pull Request open ho, tests run karna.
-```
+# 6. Workflow
 
-Ye instructions `.github/workflows/` mein YAML files mein likhe jaate hain.
+A workflow is the complete automation definition.
 
 Example:
 
-```
-messaging-platform/
-│
-├── Client/
-├── Server/
-│
-└── .github/
-    └── workflows/
-        └── ci.yml
-```
-
-## 8. Workflow Kya Hota Hai?
-
-**Workflow = complete automation definition.**
-
-Example:
-
-```
+``` text
 ci.yml
 
 Trigger
@@ -348,18 +342,28 @@ Install dependencies
    ↓
 Lint
    ↓
-Test
-   ↓
 Build
 ```
 
-## 9. Trigger Kya Hota Hai?
+A project can have multiple workflows:
 
-Workflow kab start hoga?
+``` text
+.github/workflows/
+├── ci.yml
+├── deploy.yml
+└── security.yml
+```
+
+Do not create many workflows without a reason. Start simple and split
+them when the responsibilities become meaningfully different.
+
+------------------------------------------------------------------------
+
+# 7. `on:` --- When Should CI Run?
 
 Example:
 
-```yaml
+``` yaml
 on:
   push:
     branches: [main]
@@ -368,242 +372,1328 @@ on:
     branches: [main]
 ```
 
-Matlab:
+`on` defines the events that trigger the workflow.
 
-**Push to main:**
+## Push
 
+``` yaml
+push:
+  branches: [main]
 ```
+
+Means:
+
+> Run this workflow when a commit is pushed to `main`.
+
+Example:
+
+``` bash
 git push origin main
-       ↓
-CI starts
 ```
 
-**Pull Request to main:**
-
-```
-PR opened
-   ↓
-CI starts
-```
-
-## 10. Job Kya Hota Hai?
-
-Workflow ke andar **jobs** hote hain.
-
-Example:
-
-```
-Workflow
-│
-├── frontend
-│
-├── backend
-│
-└── security
-```
-
-Har job independently run ho sakta hai.
-
-Tere project ke liye:
-
-```
+``` text
+push
+ ↓
+GitHub Actions
+ ↓
 CI
-├── Client checks
-└── Server checks
 ```
 
-## 11. Runner Kya Hota Hai?
+## Pull Request
 
-Ye bhi extremely important hai.
-
-GitHub Actions ko commands execute karne ke liye ek machine chahiye.
-
-GitHub provide karta hai:
-
+``` yaml
+pull_request:
+  branches: [main]
 ```
-GitHub-hosted runner
-```
+
+Means:
+
+> Run this workflow when a Pull Request targets `main`.
 
 Example:
 
-```yaml
+``` text
+feature/profile-ui
+        ↓
+Pull Request
+        ↓
+      main
+```
+
+CI runs before the change is merged.
+
+------------------------------------------------------------------------
+
+# 8. Why Use Both `push` and `pull_request`?
+
+They protect different points in the workflow.
+
+## Pull Request
+
+``` text
+feature branch
+      ↓
+     PR
+      ↓
+     CI
+      ↓
+ PASS / FAIL
+```
+
+This gives feedback before merge.
+
+## Push to main
+
+``` text
+PR merged
+   ↓
+main changes
+   ↓
+CI runs again
+```
+
+This verifies the actual main branch commit.
+
+### Practical improvement
+
+For a mature repository, combine this with **branch protection /
+required status checks**:
+
+``` text
+PR
+ ↓
+CI ❌
+ ↓
+Merge blocked
+
+PR
+ ↓
+CI ✅
+ ↓
+Merge allowed
+```
+
+That turns CI into an actual quality gate.
+
+------------------------------------------------------------------------
+
+# 9. `jobs:` --- What Work Should CI Perform?
+
+Example:
+
+``` yaml
+jobs:
+  build-and-lint:
+```
+
+`jobs` contains the units of work in a workflow.
+
+Example:
+
+``` yaml
+jobs:
+  frontend:
+    ...
+
+  backend:
+    ...
+
+  security:
+    ...
+```
+
+Jobs can be independent or can depend on each other.
+
+For a small single Next.js application, one job is perfectly reasonable:
+
+``` text
+CI
+└── build-and-lint
+```
+
+Do not split one simple job into five jobs just to make the YAML look
+advanced.
+
+------------------------------------------------------------------------
+
+# 10. `runs-on:` --- Where Does the Job Run?
+
+Example:
+
+``` yaml
 runs-on: ubuntu-latest
 ```
 
-Matlab:
+GitHub needs a machine to execute the commands.
 
-> GitHub, mujhe ek temporary Ubuntu machine do aur uspe ye commands run karo.
+A GitHub-hosted runner provides a temporary environment.
 
 Conceptually:
 
-```
+``` text
 GitHub
-   ↓
-Temporary Linux VM
-   ↓
-Clone repository
-   ↓
-npm install
-   ↓
-tests
-   ↓
-build
-   ↓
-VM destroyed
+  ↓
+Temporary Ubuntu runner
+  ↓
+Checkout repository
+  ↓
+Run commands
+  ↓
+Job ends
 ```
 
-**Tere laptop par kuch execute nahi hota** — ye pura process GitHub ke servers pe hota hai, isolated environment mein.
+Your laptop is **not** executing the CI job.
 
-## 12. Step Kya Hota Hai?
+The runner is a fresh environment, which is important because it exposes
+assumptions that may accidentally work on your machine.
 
-Job ke andar individual instructions:
+------------------------------------------------------------------------
 
-```yaml
-steps:
-  - checkout
+# 11. Why CI Can Fail When Local Code "Works"
 
-  - setup node
+This is a critical debugging lesson.
 
-  - npm ci
+Your laptop may have:
 
-  - npm run lint
-
-  - npm run build
+``` text
+existing node_modules
+cached packages
+different Node version
+local environment variables
+different OS
 ```
 
-Toh hierarchy yaad rakh:
+CI usually starts from a clean environment:
 
-```
-Workflow
+``` text
+Fresh runner
    ↓
-Jobs
+npm ci
    ↓
-Steps
+exact lockfile dependencies
+   ↓
+lint/build/tests
 ```
+
+Therefore:
+
+``` text
+Works locally
+```
+
+does **not automatically mean**
+
+``` text
+Works in CI
+```
+
+### Debugging principle
+
+Do not guess from the red ❌.
+
+Read the logs.
+
+``` text
+CI failed
+   ↓
+Open failed job
+   ↓
+Find failed step
+   ↓
+Read actual error
+   ↓
+Reproduce locally if possible
+   ↓
+Fix
+   ↓
+Run again
+```
+
+------------------------------------------------------------------------
+
+# 12. `steps:` --- What Commands Should Run?
 
 Example:
 
-```
-CI Workflow
-│
-├── Frontend Job
-│   ├── Checkout
-│   ├── Setup Node
-│   ├── npm ci
-│   ├── npm run lint
-│   └── npm run build
-│
-└── Backend Job
-    ├── Checkout
-    ├── Setup Node
-    ├── npm ci
-    ├── tests
-    └── build/check
-```
+``` yaml
+steps:
+  - name: Checkout repository
+    uses: actions/checkout@v4
 
-## 13. `npm ci` vs `npm install`
+  - name: Setup Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: 20
 
-CI/CD mein ye difference important hai.
+  - name: Install dependencies
+    run: npm ci
 
-Normally:
+  - name: Lint
+    run: npm run lint
 
-```bash
-npm install
+  - name: Build
+    run: npm run build
 ```
 
-CI environment mein generally:
+This is the actual CI pipeline we implemented for `hingeprofile`.
 
-```bash
+------------------------------------------------------------------------
+
+# 13. `uses:` vs `run:`
+
+This distinction is extremely important.
+
+## `uses:`
+
+Use an existing GitHub Action.
+
+``` yaml
+uses: actions/checkout@v4
+```
+
+or:
+
+``` yaml
+uses: actions/setup-node@v4
+```
+
+Think:
+
+> "Use this pre-built automation."
+
+## `run:`
+
+Execute a shell command on the runner.
+
+``` yaml
+run: npm ci
+```
+
+``` yaml
+run: npm run lint
+```
+
+``` yaml
+run: npm run build
+```
+
+Think:
+
+> "Open the runner's terminal and execute this command."
+
+------------------------------------------------------------------------
+
+# 14. `name:`
+
+Example:
+
+``` yaml
+- name: Install dependencies
+```
+
+This is a human-readable label shown in GitHub Actions.
+
+It does not perform the actual work.
+
+For example:
+
+``` yaml
+- name: Lint
+  run: npm run lint
+```
+
+means:
+
+``` text
+UI label → Lint
+Actual command → npm run lint
+```
+
+------------------------------------------------------------------------
+
+# 15. `with:`
+
+`with` passes configuration to an action.
+
+Example:
+
+``` yaml
+- name: Setup Node.js
+  uses: actions/setup-node@v4
+  with:
+    node-version: 20
+```
+
+Meaning:
+
+``` text
+Use setup-node
+      ↓
+Configure it
+      ↓
+Node version = 20
+```
+
+------------------------------------------------------------------------
+
+# 16. What Does `@v4` Mean?
+
+``` yaml
+uses: actions/checkout@v4
+```
+
+The `@v4` specifies the action version/ref being used.
+
+It is not the Node version.
+
+Compare:
+
+``` yaml
+uses: actions/checkout@v4
+```
+
+vs
+
+``` yaml
+with:
+  node-version: 20
+```
+
+These are different:
+
+``` text
+@v4       → checkout action version
+node 20   → Node.js runtime version
+```
+
+------------------------------------------------------------------------
+
+# 17. `npm ci` vs `npm install`
+
+For CI, prefer:
+
+``` bash
 npm ci
 ```
 
-use karte hain.
+when a lockfile exists.
 
-**`npm ci` lockfile (`package-lock.json`) ko strictly follow karta hai, jisse builds zyada reproducible ban jaate hain** — matlab har machine pe exactly same dependency versions install honge, koi surprise nahi.
+## `npm install`
 
-Tere repo mein dono Client aur Server ke paas `package-lock.json` hain.
+Designed primarily for development and dependency changes.
 
-Toh pipeline mein:
+It can update the lockfile when dependency metadata changes.
 
-```bash
-cd Client
+## `npm ci`
+
+Designed for clean, reproducible CI installs.
+
+It uses the lockfile as the source of truth and installs the declared
+dependency versions.
+
+Mental model:
+
+``` text
+package.json
+    +
+package-lock.json
+    ↓
 npm ci
+    ↓
+predictable dependency installation
 ```
 
-aur:
+For `hingeprofile`, `package-lock.json` exists, so `npm ci` is
+appropriate.
 
-```bash
-cd Server
+------------------------------------------------------------------------
+
+# 18. Why Reproducibility Matters
+
+Imagine:
+
+``` text
+Developer machine
+    ↓
+dependency version A
+
+CI
+    ↓
+dependency version B
+```
+
+Now:
+
+``` text
+Developer: works ✅
+CI: fails ❌
+```
+
+A lockfile + clean installation reduces this class of problem.
+
+This is why CI environments should be deterministic as much as
+reasonably possible.
+
+------------------------------------------------------------------------
+
+# 19. Linting
+
+Our CI runs:
+
+``` bash
+npm run lint
+```
+
+The project's `package.json` defines:
+
+``` json
+"lint": "eslint"
+```
+
+So GitHub effectively runs:
+
+``` text
+npm run lint
+   ↓
+eslint
+   ↓
+code-quality checks
+```
+
+Linting catches things like:
+
+-   unused variables
+-   unsafe patterns
+-   style violations
+-   TypeScript problems configured through ESLint
+-   React-specific issues
+
+Linting is not the same as testing.
+
+``` text
+Lint → code-quality/static analysis
+Test → behavior verification
+```
+
+------------------------------------------------------------------------
+
+# 20. The First `hingeprofile` CI Failure
+
+This is worth keeping as a real debugging case study.
+
+Initial pipeline:
+
+``` text
+Checkout              ✅
+Setup Node             ✅
+npm ci                 ✅
+Lint                   ❌
+Build                  skipped
+```
+
+Lint reported:
+
+``` text
+6 errors
+4 warnings
+```
+
+### Error 1 --- `useMobile.ts`
+
+The code had:
+
+``` ts
+setIsMobile(mql.matches);
+```
+
+inside an effect.
+
+The React lint rule reported:
+
+``` text
+react-hooks/set-state-in-effect
+```
+
+The important lesson:
+
+> Do not blindly remove code just to satisfy CI. Understand why the rule
+> exists.
+
+We changed the hook to model `matchMedia` as an external subscription
+using `useSyncExternalStore`.
+
+Conceptually:
+
+``` text
+Before:
+
+render
+ ↓
+effect
+ ↓
+setState
+ ↓
+render again
+
+
+After:
+
+React
+ ↓
+useSyncExternalStore
+ ↓
+matchMedia subscription
+ ↓
+React updates when external value changes
+```
+
+------------------------------------------------------------------------
+
+# 21. `PersonalityProfile.ts` --- `any`
+
+The original helper contained:
+
+``` ts
+const aiTrait = (type: any, defaultValue: any) => ({
+```
+
+ESLint reported:
+
+``` text
+@typescript-eslint/no-explicit-any
+```
+
+Why this matters:
+
+``` ts
+any
+```
+
+essentially tells TypeScript:
+
+> "Do not enforce useful type information here."
+
+The better solution is to model the relationship between the schema type
+and its default value using appropriate Mongoose/TypeScript types rather
+than replacing `any` with another arbitrary type.
+
+General principle:
+
+``` text
+Bad:
+type: any
+defaultValue: any
+
+Better:
+type-safe relationship between inputs
+```
+
+------------------------------------------------------------------------
+
+# 22. `photoNormalizer.ts` --- `let` vs `const`
+
+The CI found:
+
+``` text
+'shot' is never reassigned. Use 'const'
+'look' is never reassigned. Use 'const'
+'setting' is never reassigned. Use 'const'
+```
+
+Original pattern:
+
+``` ts
+let shot = photo.shot?.trim();
+let look = photo.look?.trim();
+let setting = photo.setting?.trim();
+```
+
+Since they were never reassigned:
+
+``` ts
+const shot = photo.shot?.trim();
+const look = photo.look?.trim();
+const setting = photo.setting?.trim();
+```
+
+This is a simple example of static analysis catching a code-quality
+issue.
+
+------------------------------------------------------------------------
+
+# 23. Warnings vs Errors
+
+Our first run had:
+
+``` text
+6 errors
+4 warnings
+```
+
+Errors caused the process to exit with:
+
+``` text
+exit code 1
+```
+
+and therefore CI failed.
+
+Warnings did not necessarily fail the command.
+
+Still, the professional target is:
+
+``` text
+0 errors
+0 warnings
+```
+
+Why?
+
+Because too many warnings create noise:
+
+``` text
+100 warnings
+    ↓
+real warning hidden
+    ↓
+harder maintenance
+```
+
+------------------------------------------------------------------------
+
+# 24. Do Not Blindly Use `eslint --fix`
+
+If ESLint says:
+
+``` text
+potentially fixable with --fix
+```
+
+you can use:
+
+``` bash
+npm run lint -- --fix
+```
+
+But understand the change first.
+
+Good engineering:
+
+``` text
+Understand
+ ↓
+Fix
+ ↓
+Verify
+```
+
+Not:
+
+``` text
+Run --fix
+ ↓
+Hope
+```
+
+Automatic fixes are useful, but they should not replace understanding.
+
+------------------------------------------------------------------------
+
+# 25. Build
+
+Our CI also runs:
+
+``` bash
+npm run build
+```
+
+For a Next.js project, this verifies that the application can
+successfully produce its production build.
+
+Development:
+
+``` bash
+npm run dev
+```
+
+Production build:
+
+``` bash
+npm run build
+```
+
+Production start:
+
+``` bash
+npm start
+```
+
+The important distinction:
+
+``` text
+dev
+ ↓
+development environment
+
+
+build
+ ↓
+production artifact
+
+
+start
+ ↓
+serve production build
+```
+
+------------------------------------------------------------------------
+
+# 26. CI Pipeline for `hingeprofile`
+
+Our implemented CI v1 is:
+
+``` yaml
+name: CI
+
+on:
+  push:
+    branches: [main]
+
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+```
+
+## Read it top-to-bottom
+
+``` text
+name
+ ↓
+CI
+
+on
+ ↓
+when should it run?
+
+jobs
+ ↓
+what work should happen?
+
+runs-on
+ ↓
+where should it happen?
+
+steps
+ ↓
+what commands/actions should happen?
+```
+
+------------------------------------------------------------------------
+
+# 27. What Happens After `git push`?
+
+Suppose we run:
+
+``` bash
+git add .
+git commit -m "fix profile"
+git push origin main
+```
+
+GitHub receives the push.
+
+Because our workflow says:
+
+``` yaml
+on:
+  push:
+    branches: [main]
+```
+
+GitHub starts the workflow.
+
+Then:
+
+``` text
+Git push
+   ↓
+GitHub
+   ↓
+Workflow triggered
+   ↓
+Ubuntu runner created
+   ↓
+Checkout repository
+   ↓
+Setup Node 20
+   ↓
 npm ci
+   ↓
+npm run lint
+   ↓
+npm run build
+   ↓
+PASS / FAIL
 ```
 
-**reasonable approach hai.**
+------------------------------------------------------------------------
 
-## 14. Secrets Kya Hote Hain?
+# 28. Sequential Execution
 
-Ab maan le tera backend production mein database se connect karta hai.
+The steps normally execute in order.
 
-Obviously tu ye nahi karega:
-
+``` text
+checkout
+   ↓
+setup node
+   ↓
+npm ci
+   ↓
+lint
+   ↓
+build
 ```
-DATABASE_URL=postgres://...
-JWT_SECRET=...
-CLOUDINARY_SECRET=...
+
+If:
+
+``` text
+npm ci ❌
 ```
 
-GitHub repository mein publicly commit.
+then later steps do not normally continue.
 
-Iske bajaye:
+If:
 
+``` text
+lint ❌
 ```
-GitHub Secrets
-      ↓
-CI/CD
-      ↓
-Environment variables
-      ↓
+
+then:
+
+``` text
+build
+```
+
+will normally be skipped.
+
+This creates a natural quality gate.
+
+------------------------------------------------------------------------
+
+# 29. `exit code 0` and `exit code 1`
+
+This is a useful terminal concept.
+
+Usually:
+
+``` text
+exit code 0
+```
+
+means success.
+
+Non-zero:
+
+``` text
+exit code 1
+```
+
+means failure.
+
+Our first lint run ended with:
+
+``` text
+Process completed with exit code 1
+```
+
+Therefore GitHub Actions marked the job failed.
+
+After fixing the code:
+
+``` text
+lint → success
+build → success
+```
+
+and the workflow became green.
+
+------------------------------------------------------------------------
+
+# 30. CI as a Gate
+
+The fundamental model:
+
+``` text
+                CODE
+                  ↓
+            ┌───────────┐
+            │    CI     │
+            └─────┬─────┘
+                  ↓
+           All checks pass?
+             /          \
+           YES           NO
+            ↓             ↓
+         MERGE          STOP
+            ↓
+       DEPLOYMENT
+```
+
+This is much more important than memorizing YAML syntax.
+
+------------------------------------------------------------------------
+
+# 31. Secrets and Environment Variables
+
+Applications often need secrets:
+
+``` text
+DATABASE_URL
+JWT_SECRET
+API_KEY
+CLERK_SECRET_KEY
+OPENAI_API_KEY
+```
+
+Never hardcode secrets:
+
+``` ts
+const apiKey = "sk-actual-secret";
+```
+
+Never commit secret `.env` files to a public repository.
+
+Instead:
+
+``` text
+Secret store
+    ↓
+Environment variable
+    ↓
 Application
 ```
 
+The repository should contain placeholders/configuration, not secret
+values.
+
+For `hingeprofile`, `.env*` is ignored through `.gitignore`, which is an
+important baseline protection.
+
+------------------------------------------------------------------------
+
+# 32. CI Secrets vs Runtime Secrets
+
+Do not confuse these.
+
+## CI secret
+
+Needed by GitHub Actions:
+
+``` text
+GitHub Actions
+   ↓
+secret
+   ↓
+test/build/deploy
+```
+
+## Runtime secret
+
+Needed by the deployed application:
+
+``` text
+Vercel production environment
+   ↓
+secret
+   ↓
+Next.js application
+```
+
+A secret needed by the application does not automatically need to be
+stored in GitHub Actions.
+
+Store secrets where they are actually required.
+
+------------------------------------------------------------------------
+
+# 33. CI Does Not Automatically Mean Deployment
+
+Our `hingeprofile` workflow currently does:
+
+``` text
+Install
+ ↓
+Lint
+ ↓
+Build
+```
+
+It does **not** perform deployment.
+
+That is intentional.
+
+`hingeprofile` is already deployed through Vercel.
+
+So our architecture is:
+
+``` text
+                 GitHub
+                   │
+          ┌────────┴────────┐
+          ↓                 ↓
+ GitHub Actions            Vercel
+       CI                    CD
+    ├─ lint              deployment
+    └─ build                 ↓
+                         Production
+```
+
+This is a valid CI/CD architecture.
+
+------------------------------------------------------------------------
+
+# 34. Why Not Replace Vercel with GitHub Actions?
+
+Because using more tools does not automatically mean better engineering.
+
+If Vercel already handles deployment well:
+
+``` text
+GitHub → Vercel → Production
+```
+
+there is no need to build a second deployment mechanism just for the
+resume.
+
+A sensible architecture is:
+
+``` text
+GitHub Actions
+     ↓
+Quality gate
+
+Vercel
+     ↓
+Deployment
+```
+
+Later, if deployment requirements change, we can introduce Docker/cloud
+deployment.
+
+------------------------------------------------------------------------
+
+# 35. Pull Request Quality Gate
+
+A stronger workflow is:
+
+``` text
+feature branch
+      ↓
+Pull Request → main
+      ↓
+GitHub Actions
+      ↓
+lint
+tests
+build
+      ↓
+PASS ✅
+      ↓
+merge
+      ↓
+Vercel deployment
+```
+
+If CI fails:
+
+``` text
+PR
+ ↓
+CI ❌
+ ↓
+Fix
+ ↓
+push again
+ ↓
+CI
+ ↓
+PASS
+```
+
+For mature projects, configure the GitHub branch/ruleset settings so
+required CI checks must pass before merge.
+
+------------------------------------------------------------------------
+
+# 36. CI vs Testing
+
+These are related but not identical.
+
+### Testing
+
+Verifies application behavior.
+
+Examples:
+
+``` text
+Does login work?
+Does matching return the correct result?
+Does an API return the correct response?
+```
+
+### CI
+
+Automates checks whenever code changes.
+
+It can run:
+
+``` text
+lint
+typecheck
+unit tests
+integration tests
+build
+security checks
+```
+
+Therefore:
+
+``` text
+Tests are one possible CI stage.
+CI is the automation system/process around validation.
+```
+
+------------------------------------------------------------------------
+
+# 37. Better CI --- CI v2
+
+Our first version:
+
+``` text
+npm ci
+ ↓
+lint
+ ↓
+build
+```
+
+A more mature pipeline could become:
+
+``` text
+npm ci
+ ↓
+lint
+ ↓
+typecheck
+ ↓
+unit tests
+ ↓
+integration tests
+ ↓
+security/dependency checks
+ ↓
+build
+```
+
+Only add checks that provide real value.
+
+------------------------------------------------------------------------
+
+# 38. Parallel Jobs
+
+When a project grows, jobs can run independently.
+
 Example:
 
+``` text
+             CI
+          /       \
+         /         \
+Frontend checks   Backend checks
+   ↓                  ↓
+lint                lint
+build               tests
+                    typecheck
 ```
-DATABASE_URL
-JWT_SECRET
-CLOUDINARY_API_KEY
+
+This can reduce total pipeline time.
+
+But parallelization adds complexity.
+
+For a small single Next.js application, one job is often simpler.
+
+------------------------------------------------------------------------
+
+# 39. Caching
+
+Dependency installation can be expensive.
+
+GitHub Actions supports caching through actions such as `setup-node`.
+
+Example:
+
+``` yaml
+- name: Setup Node.js
+  uses: actions/setup-node@v4
+  with:
+    node-version: 20
+    cache: npm
 ```
 
-Secrets encrypted form mein GitHub mein stored hote hain.
+This can cache npm package data and speed up repeated runs.
 
-**Rule:**
+Important:
 
-> **Secrets ko kabhi source code mein hardcode nahi karna chahiye.**
-
-## 15. CD Mein Docker Kahan Aata Hai?
-
-Ab CI se aage badhte hain.
-
-Maan le backend application ready hai.
-
-Tujhe chahiye:
-
+``` text
+Cache ≠ source of truth
 ```
+
+The lockfile still determines the dependency versions used by `npm ci`.
+
+------------------------------------------------------------------------
+
+# 40. Docker
+
+Docker is often used in CD, but Docker is **not required for CI/CD**.
+
+A conceptual Docker pipeline:
+
+``` text
 Server code
+   ↓
+Dockerfile
    ↓
 Docker image
    ↓
 Container
    ↓
-Cloud server
+Cloud
 ```
 
-**Dockerfile define karta hai:**
+Dockerfile:
 
-> Application ko kaise package karna hai.
-
-Example concept:
-
-```dockerfile
+``` dockerfile
 FROM node
 
 WORKDIR /app
@@ -618,357 +1708,655 @@ RUN npm run build
 CMD ["npm", "start"]
 ```
 
-Phir:
+Build:
 
-```bash
+``` bash
 docker build -t messaging-server .
 ```
 
-ek image create karta hai.
+------------------------------------------------------------------------
 
-## 16. Docker Image vs Container
-
-**Ye interview favourite hai.**
+# 41. Image vs Container
 
 ### Image
 
-Blueprint/package:
+A packaged, reusable artifact containing the application and its
+runtime/dependencies.
 
-```
-Messaging Server
-+ Node
-+ dependencies
-+ application
+``` text
+Image
+├── Node
+├── dependencies
+└── application
 ```
 
 ### Container
 
-Us image ka **running instance.**
+A running instance created from an image.
 
-```
-IMAGE
+``` text
+Image
   ↓
 docker run
   ↓
-CONTAINER
-```
-
-Soch:
-
-```
-Class  → Object
-Image → Container
-```
-
-## 17. Full CD Pipeline
-
-Ab sab kuch combine karte hain.
-
-```
-                 Git Push
-                    ↓
-             GitHub Repository
-                    ↓
-             GitHub Actions
-                    ↓
-        ┌─────────────────────┐
-        │        CI           │
-        │                     │
-        │ Install             │
-        │ Lint                │
-        │ Test                │
-        │ Build               │
-        └──────────┬──────────┘
-                   ↓
-                 PASS
-                   ↓
-             Docker Build
-                   ↓
-              Docker Image
-                   ↓
-             Image Registry
-                   ↓
-                Deploy
-                   ↓
-             Cloud Server
-                   ↓
-             Production
-```
-
-**Yehi CI/CD hai.**
-
-## 18. Tere Messaging Platform Mein Actual Architecture
-
-Tera project currently:
-
-```
-messaging-platform
-│
-├── Client
-│   └── React + Vite
-│
-└── Server
-    └── Node + TypeScript
-        └── Prisma
-```
-
-Main eventually iska aim rakhunga:
-
-```
-                       GitHub
-                          │
-                   Pull Request
-                          │
-                          ▼
-                  ┌─────────────┐
-                  │ CI Pipeline │
-                  └──────┬──────┘
-                         │
-              ┌──────────┴──────────┐
-              ▼                     ▼
-         Client CI              Server CI
-         ├─ npm ci              ├─ npm ci
-         ├─ lint                ├─ test
-         └─ build               ├─ Prisma
-                                └─ build
-              │                     │
-              └──────────┬──────────┘
-                         ▼
-                       MERGE
-                         │
-                         ▼
-                  CD Pipeline
-                         │
-              ┌──────────┴──────────┐
-              ▼                     ▼
-         Frontend Deploy       Backend Deploy
-              │                     │
-              ▼                     ▼
-           Hosting              Container
-                                    │
-                                    ▼
-                              PostgreSQL
-```
-
-## 19. CI/CD Ka Actual Benefit
-
-Socho tu production mein hai.
-
-Tujhe milta hai:
-
-```
-BUG: Messages aren't loading
-```
-
-Tu isse fix karta hai.
-
-**Without CI/CD:**
-
-```
-Fix
- ↓
-build manually
- ↓
-test manually
- ↓
-upload manually
- ↓
-restart server
- ↓
-hope nothing breaks
-```
-
-**With CI/CD:**
-
-```
-Fix
- ↓
-git push
- ↓
-CI
- ↓
-tests
- ↓
-build
- ↓
-deploy
- ↓
-production
-```
-
-Aur agar tests fail hote hain:
-
-```
-git push
-   ↓
-CI ❌
-   ↓
-NO DEPLOYMENT
-```
-
-**Yehi real value hai** — broken code kabhi production tak pahunchta hi nahi.
-
-## 20. CI/CD Ka Sabse Important Principle
-
-> **Never deploy broken code.**
-
-Pipeline essentially ek **gate** ban jaata hai:
-
-```
-                 CODE
-                   ↓
-             ┌───────────┐
-             │    CI     │
-             └─────┬─────┘
-                   │
-             ┌─────▼─────┐
-             │ All checks│
-             │   pass?   │
-             └──┬─────┬──┘
-                │     │
-               YES    NO
-                │     │
-                ▼     ▼
-             DEPLOY   STOP
-```
-
-## 21. CI/CD ≠ Sirf GitHub Actions
-
-**Ye distinction important hai.**
-
-CI/CD ek **process/practice** hai.
-
-GitHub Actions usse implement karne ka sirf ek **tool** hai.
-
-Doosre tools:
-
-```
-GitHub Actions
-GitLab CI
-Jenkins
-CircleCI
-Azure DevOps
-Buildkite
-```
-
-Toh interview mein ye mat bol:
-
-> "CI/CD means GitHub Actions."
-
-**Galat.**
-
-Ye bol:
-
-> "CI/CD ek software engineering practice hai integration, validation, delivery, aur deployment ko automate karne ke liye. GitHub Actions wo automation platform hai jo main us pipeline ko implement karne ke liye use kar raha hoon."
-
-**Yehi correct mental model hai.**
-
-## 22. Tere Project Ke Liye Hum Kya Implement Karenge?
-
-Main isse 4 stages mein karwaunga.
-
-### Stage 1 — Basic CI
-
-```
-PR / Push
-   ↓
-Client lint
-Client build
-   +
-Server validation/tests
-```
-
-**Goal:**
-
-> Broken code main mein easily enter nahi kar sakta.
-
-### Stage 2 — Better CI
-
-Add kar:
-
-```
-Unit tests
-Integration tests
-Prisma validation
-Security checks
-Dependency caching
-```
-
-### Stage 3 — Containerization
-
-```
-Server
- ↓
-Dockerfile
- ↓
-Docker Image
- ↓
 Container
 ```
 
-Potentially client ko bhi containerize kar sakte hain.
+Mental model:
 
-### Stage 4 — CD
-
+``` text
+Class      → Object
+Image      → Container
 ```
-main
- ↓
-GitHub Actions
- ↓
-Build
- ↓
+
+------------------------------------------------------------------------
+
+# 42. Full Docker-Based CD
+
+If a project needs Docker deployment:
+
+``` text
+Git push
+   ↓
+CI
+   ├── lint
+   ├── test
+   └── build
+   ↓
+PASS
+   ↓
+docker build
+   ↓
 Docker image
- ↓
-Registry
- ↓
-Cloud
- ↓
+   ↓
+Container registry
+   ↓
+Cloud deployment
+   ↓
 Production
 ```
 
-Phir add kar:
+Typical registry options include:
 
+-   GitHub Container Registry
+-   Docker Hub
+-   cloud container registries
+
+------------------------------------------------------------------------
+
+# 43. Health Checks
+
+Deployment success does not necessarily mean the application is healthy.
+
+Example:
+
+``` text
+Deployment succeeded
+        ↓
+Application crashes
+        ↓
+Users get 500s
 ```
+
+A stronger CD pipeline can verify:
+
+``` text
+Deploy
+ ↓
+Health check
+ ↓
+HTTP 200?
+ ↓
+YES → deployment successful
+NO  → investigate/rollback
+```
+
+Example endpoint concept:
+
+``` text
+GET /api/health
+```
+
+Response:
+
+``` json
+{
+  "status": "ok"
+}
+```
+
+------------------------------------------------------------------------
+
+# 44. Rollback
+
+A production deployment can fail after deployment.
+
+A mature system needs a way to return to a known-good version.
+
+``` text
+Version A
+   ↓
+Production
+   ↓
+Version B deployed
+   ↓
+Health check fails
+   ↓
+Rollback to A
+```
+
+Rollback is one of the major differences between:
+
+``` text
+"we can deploy"
+```
+
+and:
+
+``` text
+"we can deploy reliably"
+```
+
+------------------------------------------------------------------------
+
+# 45. Environments
+
+Real applications often have:
+
+``` text
+Development
+Staging
+Production
+```
+
+Flow:
+
+``` text
+Feature
+  ↓
+CI
+  ↓
+Preview/Staging
+  ↓
+Validation
+  ↓
+Production
+```
+
+For a Vercel application:
+
+``` text
+Pull Request
+   ↓
+Preview deployment
+
+main
+   ↓
+Production deployment
+```
+
+This is a strong practical setup.
+
+------------------------------------------------------------------------
+
+# 46. Common CI/CD Mistakes
+
+## Mistake 1 --- Disabling checks
+
+``` text
+CI fails
+ ↓
+disable lint
+ ↓
+CI green
+```
+
+This defeats the purpose.
+
+## Mistake 2 --- Hardcoding secrets
+
+Never.
+
+## Mistake 3 --- Deploying directly from every branch
+
+Usually undesirable for production.
+
+## Mistake 4 --- No tests
+
+Lint + build does not prove behavior is correct.
+
+## Mistake 5 --- Overengineering
+
+Do not introduce:
+
+``` text
+Kubernetes
+Terraform
+Docker
+AWS
+5 workflows
+20 tools
+```
+
+to a tiny project just for appearances.
+
+## Mistake 6 --- Ignoring CI failures
+
+A red CI should mean:
+
+``` text
+stop
+investigate
+fix
+rerun
+```
+
+not:
+
+``` text
+ignore
+merge
+```
+
+------------------------------------------------------------------------
+
+# 47. How to Debug Any CI Failure
+
+Use this process every time.
+
+``` text
+1. Workflow failed
+        ↓
+2. Identify failed job
+        ↓
+3. Identify failed step
+        ↓
+4. Read actual error
+        ↓
+5. Classify:
+   dependency?
+   lint?
+   test?
+   build?
+   environment?
+        ↓
+6. Reproduce locally
+        ↓
+7. Fix root cause
+        ↓
+8. Run local checks
+        ↓
+9. Push
+        ↓
+10. Verify CI
+```
+
+### Example from our project
+
+``` text
+CI ❌
+ ↓
+Lint ❌
+ ↓
+6 errors + 4 warnings
+ ↓
+Inspect source files
+ ↓
+Fix actual issues
+ ↓
+npm run lint
+ ↓
+npm run build
+ ↓
+push
+ ↓
+CI ✅
+```
+
+This is the exact workflow you should remember.
+
+------------------------------------------------------------------------
+
+# 48. Local CI Simulation
+
+Before pushing, run the same important commands locally:
+
+``` bash
+npm ci
+npm run lint
+npm run build
+```
+
+This does not completely replace CI because the runner environment can
+still differ.
+
+But it catches obvious failures early.
+
+Useful principle:
+
+``` text
+Local validation → fast feedback
+CI → independent verification
+```
+
+------------------------------------------------------------------------
+
+# 49. The Production Mental Model
+
+Do not memorize tools first.
+
+Memorize the pipeline:
+
+``` text
+WRITE CODE
+    ↓
+CREATE PR
+    ↓
+CI
+ ├── install
+ ├── lint
+ ├── typecheck
+ ├── test
+ └── build
+    ↓
+PASS
+    ↓
+MERGE
+    ↓
+CD
+ ├── package
+ ├── deploy
+ ├── health check
+ └── rollback if necessary
+    ↓
+PRODUCTION
+```
+
+------------------------------------------------------------------------
+
+# 50. Interview Questions You Should Be Able to Answer
+
+### Q: What is CI?
+
+> Continuous Integration is the practice of automatically validating
+> code changes before they are integrated into a shared codebase.
+
+### Q: What is CD?
+
+> Continuous Delivery/Deployment automates the process of making
+> validated software production-ready or deploying it to production.
+
+### Q: Is GitHub Actions CI/CD?
+
+> GitHub Actions is an automation platform used to implement CI/CD
+> workflows; CI/CD itself is the engineering practice.
+
+### Q: Why `npm ci` instead of `npm install`?
+
+> `npm ci` is intended for clean, reproducible installs using the
+> lockfile.
+
+### Q: What is a runner?
+
+> A runner is the machine/environment where GitHub Actions executes
+> workflow steps.
+
+### Q: What is `uses`?
+
+> It invokes a reusable GitHub Action.
+
+### Q: What is `run`?
+
+> It executes a shell command on the runner.
+
+### Q: Why run lint in CI?
+
+> To automatically catch static/code-quality problems before code is
+> integrated.
+
+### Q: Why run a production build in CI?
+
+> To verify that the application can successfully produce its deployable
+> production build before it is released.
+
+### Q: What happens if CI fails?
+
+> The change should be investigated and fixed rather than bypassing the
+> check; with required status checks, the PR can be blocked from
+> merging.
+
+### Q: Does CI automatically deploy?
+
+> Not necessarily. CI validates code. CD handles delivery/deployment.
+
+------------------------------------------------------------------------
+
+# 51. Practical Progression for Your Projects
+
+## Level 1 --- Basic CI
+
+``` text
+PR / push
+ ↓
+npm ci
+ ↓
+lint
+ ↓
+build
+```
+
+This is what we implemented for `hingeprofile`.
+
+## Level 2 --- Strong CI
+
+``` text
+npm ci
+ ↓
+lint
+ ↓
+typecheck
+ ↓
+unit tests
+ ↓
+integration tests
+ ↓
+security checks
+ ↓
+build
+```
+
+## Level 3 --- Preview + Production
+
+``` text
+PR
+ ↓
+CI
+ ↓
+Preview deployment
+ ↓
+review
+ ↓
+merge
+ ↓
+Production deployment
+```
+
+For `hingeprofile`, Vercel can remain responsible for deployment.
+
+## Level 4 --- Production Engineering
+
+``` text
+CI
+ ↓
+artifact/image
+ ↓
+staging
+ ↓
+approval
+ ↓
+production
+ ↓
 health check
+ ↓
+monitor
+ ↓
 rollback
-environment separation
 ```
 
-## 23. Dev → CI → CD Ka Final Mental Model
+------------------------------------------------------------------------
 
-Isko literally yaad kar:
+# 52. What We Actually Achieved in `hingeprofile`
 
-```
-I WRITE CODE
-     ↓
-I PUSH CODE
-     ↓
-       CI
-       │
-       ├── Install
-       ├── Lint
-       ├── Test
-       └── Build
-            ↓
-         PASS ✅
-            ↓
-       CD
-       │
-       ├── Package
-       ├── Docker
-       ├── Push image
-       └── Deploy
-            ↓
-        PRODUCTION 🚀
+Before:
+
+``` text
+GitHub
+  ↓
+Vercel
+  ↓
+Production
 ```
 
-Aur ye philosophy:
+After adding CI:
 
-> **CI poochta hai: "Is this code safe to integrate?"**
->
-> **CD poochta hai: "Can we reliably deliver this validated code to users?"**
+``` text
+                    GitHub
+                  /        \
+                 /          \
+                ↓            ↓
+       GitHub Actions       Vercel
+             CI               CD
+             ↓                 ↓
+         npm ci           Deployment
+             ↓                 ↓
+           lint           Production
+             ↓
+           build
+```
 
-Yehi core hai.
+The important engineering improvement is:
 
----
+``` text
+Bad code
+   ↓
+CI catches it
+   ↓
+Fix
+   ↓
+CI passes
+   ↓
+Code is allowed to progress
+```
 
+------------------------------------------------------------------------
+
+# 53. Final Mental Model
+
+Remember these four questions:
+
+### 1. When?
+
+``` text
+on:
+```
+
+### 2. Where?
+
+``` text
+runs-on:
+```
+
+### 3. What work?
+
+``` text
+jobs:
+steps:
+```
+
+### 4. How?
+
+``` text
+uses:
+run:
+with:
+```
+
+And remember the bigger picture:
+
+``` text
+CI/CD
+│
+├── CI
+│   ├── install
+│   ├── lint
+│   ├── test
+│   ├── typecheck
+│   └── build
+│
+└── CD
+    ├── package
+    ├── deploy
+    ├── health check
+    └── rollback
+```
+
+The two most important questions:
+
+> **CI: "Is this code safe to integrate?"**
+
+> **CD: "Can we reliably deliver this validated code to users?"**
+
+------------------------------------------------------------------------
+
+# 54. Next Practical Learning Path
+
+For `hingeprofile`, do this in order:
+
+``` text
+✅ 1. Basic GitHub Actions CI
+      ↓
+   already completed
+
+2. PR-based CI
+      ↓
+3. Required status checks
+      ↓
+4. TypeScript checking
+      ↓
+5. Tests
+      ↓
+6. Dependency/security checks
+      ↓
+7. Vercel Preview + Production workflow
+      ↓
+8. Environment variables/secrets
+      ↓
+9. Monitoring/health checks
+```
+
+For the separate messaging platform, later apply the same principles but
+account for its two-part architecture:
+
+``` text
+Client
+   ↓
+frontend CI
+
+Server
+   ↓
+backend CI
+
+then
+
+Client deployment
++
+Server deployment
++
+Database/migrations
+```
+
+The goal is not to memorize one YAML file.
+
+The goal is to look at **any project**, inspect its
+scripts/runtime/deployment architecture, and design the CI/CD pipeline
+around the actual system.
