@@ -1,0 +1,679 @@
+1. Why do we need Docker?
+1.1 The problem Docker solves
+Suppose you build a MERN application on your laptop. It works perfectly locally, but when you deploy it to a server, it fails or behaves differently.
+Possible reasons:
+- Different Node.js versions.
+- Different operating systems or system libraries.
+- Missing dependencies.
+- Different environment variables.
+- Different configurations.
+- Manually installed tools that are missing on the server.
+This is called an environment inconsistency problem.
+Docker helps package an application and its runtime requirements into a reproducible environment.
+1.2 What Docker actually does
+Docker is a platform used to build, distribute and run applications inside containers.
+Think of a container as a box containing the application and the environment it needs.
+Application code
+
+
+Runtime and dependencies
+
+
+Docker image → Container
+
+
+1.3 Benefits of Docker
+Benefit	Explanation
+Consistency	More reproducible environments across development and deployment
+Isolation	Applications have separated process and filesystem environments
+Portability	Images can be moved between compatible environments
+Efficiency	Containers generally need fewer resources than full VMs
+Scalability	Containers can be managed by orchestration systems
+Repeatability	Teams can use the same build instructions
+1.4 Example: Node.js + PostgreSQL
+Without Docker, you might install Node.js and PostgreSQL separately on every machine.
+With Docker, you can define the app and database as services and start them together.
+docker compose up
+
+
+Important: Docker reduces environment inconsistencies. It does not guarantee that every application will behave identically on every OS, CPU architecture or external service.
+
+2. What are containers?
+A container is an isolated runtime environment for application processes, created from a container image.
+A container uses the host kernel rather than booting a separate full guest operating system for every application.
+Example: Run MongoDB
+docker run -d \
+  --name mongo-dev \
+  -p 27017:27017 \
+  mongo
+
+
+Explanation:
+- docker run: creates and starts a container.
+- -d: runs it in the background.
+- --name mongo-dev: gives the container a name.
+- -p 27017:27017: maps a host port to a container port.
+- mongo: the image to run.
+If the image is not available locally, Docker normally attempts to pull it from the configured registry.
+Why containers matter
+- You can run different application environments without manually installing every dependency on your host.
+- You can create and remove development services quickly.
+- You can reproduce many deployment environments locally.
+- You can run multiple isolated services on one machine.
+Remember: a container is not a complete virtual computer. It is an isolated application runtime.
+
+3. Virtual machines, hypervisors and containers
+3.1 What is a virtual machine?
+A Virtual Machine (VM) is a virtual computer that behaves like a separate machine.
+It has virtualized resources such as:
+- CPU
+- RAM
+- Storage
+- Network devices
+- A guest operating system
+For example, you can run Ubuntu inside Windows using VirtualBox.
+3.2 What is a hypervisor?
+A hypervisor creates and manages virtual machines. It allocates physical hardware resources to the VMs.
+Examples include Hyper-V, VMware hypervisors and VirtualBox.
+3.3 Why did containers become popular if VMs already existed?
+VMs solve the problem of running separate operating systems on the same physical hardware. However, each VM must maintain its own guest OS.
+Containers can share a kernel, so they usually require less overhead for application deployment.
+Feature	Virtual machine	Container
+Operating system	Separate guest OS	Shares host kernel
+Startup	Usually slower	Usually faster
+Resource usage	Often higher	Often lower
+Isolation	Virtual machine boundary	Process-level isolation and runtime protections
+Typical usage	Separate OS environments	Application packaging and deployment
+One important detail: Docker Desktop on Windows and macOS commonly uses a lightweight Linux VM to run Linux containers.
+Interview takeaway: Containers and VMs are complementary technologies, not direct substitutes in every situation.
+
+4. Docker architecture
+Docker commonly uses a client-server architecture.
+Docker CLI
+docker run, docker build, docker ps
+
+Docker Engine / daemon
+Manages containers, images, networks and volumes
+
+Images
+
+
+Containers
+
+
+Networks
+
+
+Volumes
+
+
+
+
+Important terms
+- Docker CLI: the command-line interface used to interact with Docker.
+- Docker Engine: the technology responsible for building and running containers.
+- Image registry: a service that stores and distributes images.
+- Docker Hub: a popular public image registry.
+
+5. Images vs. containers
+Docker image
+A Docker image is a packaged, read-only template containing the filesystem and configuration needed to start an application.
+Docker container
+A container is an instance created from an image. A running container also has runtime state and a writable filesystem layer.
+Dockerfile
+    |
+    | docker build
+    v
+Docker Image
+    |
+    | docker run
+    v
+Container
+
+
+One image can be used to start multiple containers.
+docker run --name app-1 my-app:1.0
+docker run --name app-2 my-app:1.0
+
+
+Each container has its own runtime state.
+Term	Meaning
+Dockerfile	Instructions to build an image
+Image	Packaged application template
+Container	Runtime instance of an image
+Registry	Stores and distributes images
+Volume	Persistent storage
+Network	Enables communication between containers
+
+6. Port mapping and environment variables
+6.1 Port mapping
+The format is:
+-p HOST_PORT:CONTAINER_PORT
+
+
+Example:
+docker run -d --name mongo-dev \
+  -p 27017:27017 mongo
+
+
+Here, host port 27017 forwards traffic to container port 27017.
+If you instead use:
+docker run -d --name mongo-dev \
+  -p 27018:27017 mongo
+
+
+You connect from the host using localhost:27018.
+Important: EXPOSE in a Dockerfile documents the intended container port. It does not publish that port to your host by itself.
+6.2 Environment variables
+The -e flag passes environment variables into the container.
+Example: PostgreSQL.
+docker run -d \
+  --name postgres-dev \
+  -e POSTGRES_PASSWORD=local_dev_password \
+  -p 5432:5432 \
+  postgres
+
+
+For this basic example, the connection string is:
+postgresql://postgres:local_dev_password@localhost:5432/postgres
+
+
+Never commit real passwords or API keys to Git. This example uses a local learning password; production applications should use proper secret management.
+
+7. Essential Docker commands
+7.1 Images and containers
+Command	Purpose
+docker images	List local images
+docker ps	Show running containers
+docker ps -a	Show all containers, including stopped ones
+docker pull nginx	Download an image
+docker build -t my-app:dev .	Build an image
+docker run nginx	Create and start a container
+docker inspect CONTAINER	Inspect container configuration
+docker logs CONTAINER	View logs
+7.2 Container lifecycle
+# Stop a container
+docker stop mongo-dev
+
+# Start an existing stopped container
+docker start mongo-dev
+
+# Forcefully stop a running container
+docker kill mongo-dev
+
+# Remove a stopped container
+docker rm mongo-dev
+
+# Remove an image
+docker rmi my-app:dev
+
+
+Difference:
+- stop: requests graceful termination.
+- kill: sends a kill signal by default.
+- rm: removes a stopped container.
+7.3 Execute commands inside a container
+docker exec -it mongo-dev sh
+
+
+- -i: keeps standard input open.
+- -t: allocates a pseudo-terminal.
+- sh: opens a shell if that shell exists in the image.
+7.4 Useful debugging workflow
+docker ps -a
+docker logs mongo-dev
+docker inspect mongo-dev
+
+
+When a container fails, check its state and logs before randomly changing the Dockerfile.
+
+8. Writing a Dockerfile
+A Dockerfile contains instructions for building a Docker image.
+Common instructions
+Instruction	Purpose
+FROM	Select a base image
+WORKDIR	Set the working directory
+COPY	Copy files into the image
+RUN	Execute commands during the build
+ENV	Configure environment variables
+EXPOSE	Document the expected port
+CMD	Set the default startup command
+ENTRYPOINT	Configure the main executable
+Example: Node.js application
+Assume the project has a package.json, a package-lock.json and a valid start script.
+FROM node:20
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
+
+
+Step-by-step explanation
+1. FROM node:20 — starts with a Node.js base image.
+2. WORKDIR /app — sets /app as the working directory.
+3. COPY package*.json ./ — copies dependency manifests.
+4. RUN npm ci — installs dependencies from the lockfile.
+5. COPY . . — copies the rest of the project.
+6. EXPOSE 3000 — documents the expected application port.
+7. CMD ["npm", "start"] — starts the application when the container runs.
+npm ci is suitable when a compatible lockfile exists. Your actual Dockerfile must match the project's package scripts and build setup.
+What is .dockerignore?
+It excludes unnecessary files from the build context.
+Example:
+node_modules
+.git
+.env
+.env.*
+coverage
+dist
+.next
+npm-debug.log*
+
+
+Adjust this for your project. Don't exclude files that your build requires.
+
+9. Dockerizing a Node.js application
+From the directory containing your Dockerfile:
+# Build the image
+docker build -t my-node-app:dev .
+
+# Verify it exists
+docker images
+
+# Run the container
+docker run --name my-node-app-dev \
+  -p 3000:3000 \
+  my-node-app:dev
+
+# Check logs from another terminal
+docker logs my-node-app-dev
+
+
+To run in the background, add -d.
+Critical networking detail
+Inside a container, an application listening only on 127.0.0.1 may not be reachable through published ports.
+Configure the server to listen on 0.0.0.0 inside the container.
+For example, with Express:
+app.listen(3000, "0.0.0.0", () => {
+  console.log("Server running on port 3000");
+});
+
+
+This is one of the most common reasons a containerized web application appears to be running but cannot be accessed from the host.
+
+10. Docker layers and caching
+Docker images are made from filesystem layers and image configuration. Layers help Docker reuse work and avoid repeatedly storing identical content.
+Conceptual example
++------------------------------+
+| Application source files     |
++------------------------------+
+| Installed dependencies       |
++------------------------------+
+| Base image                   |
++------------------------------+
+
+
+Each filesystem change contributes to the resulting image. The exact layer structure depends on the builder and instructions.
+Why layers matter
+1. Caching: unchanged build steps can be reused.
+2. Storage efficiency: images can share common layers.
+3. Faster distribution: registries can reuse layers already present.
+4. Immutability: built layer content is not edited in place.
+Example: source code changes
+Suppose your Dockerfile is:
+FROM node:20
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+CMD ["npm", "start"]
+
+
+If only index.js changes, Docker can often reuse the base image and dependency-install steps.
+If package.json or the lockfile changes, the dependency-install step may need to run again.
+The key principle is to separate steps according to how frequently their inputs change.
+
+11. Dockerfile optimization
+Less efficient approach
+FROM node:20
+WORKDIR /app
+
+COPY . .
+RUN npm ci
+
+CMD ["npm", "start"]
+
+
+Problem: any change in the copied files may invalidate the dependency installation cache.
+Better approach
+FROM node:20
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+CMD ["npm", "start"]
+
+
+Now changes to source files can often reuse the cached dependencies.
+Prisma project consideration
+For projects using Prisma, client generation may require the Prisma schema to be available during the build.
+A possible pattern is:
+FROM node:20
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY prisma ./prisma
+RUN npx prisma generate
+
+COPY . .
+RUN npm run build
+
+EXPOSE 3000
+CMD ["npm", "start"]
+
+
+This is an example, not a universal Dockerfile. Adjust the paths and commands to match your actual project, Prisma configuration and package scripts.
+Rule to remember: copy dependency manifests first, install dependencies next, and copy frequently changing source code afterward.
+
+12. Docker Hub: pushing images
+Docker Hub stores container images that other machines can pull and run.
+Step 1: Create a repository
+Create an account at Docker Hub and create a repository.
+Step 2: Log in
+docker login
+
+
+Step 3: Build with a repository tag
+docker build \
+  -t YOUR_DOCKERHUB_USERNAME/my-node-app:v1 .
+
+
+Replace the placeholder with your actual username.
+Step 4: Push the image
+docker push YOUR_DOCKERHUB_USERNAME/my-node-app:v1
+
+
+Step 5: Run it elsewhere
+docker run --rm \
+  -p 3000:3000 \
+  YOUR_DOCKERHUB_USERNAME/my-node-app:v1
+
+
+Docker downloads the image automatically if it is not already available locally.
+Image tags
+Examples:
+- v1
+- v1.2.0
+- dev
+- staging
+- latest
+latest is just a conventional tag name. It does not automatically update when you build another image. Explicit version tags are preferable for reproducible deployments.
+Never bake credentials into a public image.
+
+13. Volumes and persistent storage
+The problem
+A container has a writable filesystem layer, but that layer belongs to the container. Removing the container can destroy data stored only there.
+Databases need persistent storage.
+What is a Docker volume?
+A Docker volume is storage managed by Docker that exists independently of an individual container.
+Example: MongoDB with a named volume
+Create the volume:
+docker volume create mongo_data
+
+
+Run MongoDB:
+docker run -d \
+  --name mongo-persistent \
+  -p 27017:27017 \
+  -v mongo_data:/data/db \
+  mongo
+
+
+Stop and remove the container:
+docker stop mongo-persistent
+docker rm mongo-persistent
+
+
+Create another container using the same volume:
+docker run -d \
+  --name mongo-persistent \
+  -p 27017:27017 \
+  -v mongo_data:/data/db \
+  mongo
+
+
+The data stored in the volume remains available as long as the volume hasn't been deleted and the database wrote its files there.
+Useful volume commands
+docker volume ls
+docker volume inspect mongo_data
+docker volume rm mongo_data
+
+
+Warning: deleting a volume can permanently delete the database data stored in it.
+
+14. Docker networking
+Docker networks enable communication between containers.
+Important concept: localhost
+Inside a container, localhost refers to that same container.
+Therefore, if your backend and database run in separate containers, using localhost as the database hostname will generally be incorrect.
+Create a network
+docker network create app_network
+
+
+Start MongoDB on that network:
+docker run -d \
+  --name mongo \
+  --network app_network \
+  -v mongo_data:/data/db \
+  mongo
+
+
+Start your backend on the same network:
+docker run -d \
+  --name backend \
+  --network app_network \
+  -p 3000:3000 \
+  -e MONGO_URL=mongodb://mongo:27017 \
+  YOUR_BACKEND_IMAGE
+
+
+Here, mongo is the container hostname on the user-defined network.
+Network types
+- Bridge network: a common network type for containers on one Docker host.
+- User-defined bridge: supports container-name DNS resolution between connected containers.
+- Host network: uses host networking directly where supported, reducing network isolation.
+In multi-container applications, you usually do not need to publish a database port to the host if only the backend needs to connect to it.
+
+15. Docker Compose
+Docker Compose lets you define multiple services in a YAML file and manage them together.
+For example, a backend may depend on MongoDB, PostgreSQL or Redis.
+Without Compose, you might manually create each container and network. With Compose, the configuration is declared in one place.
+Example: backend + MongoDB
+Create compose.yaml:
+services:
+  mongodb:
+    image: mongo
+    volumes:
+      - mongodb_data:/data/db
+
+  backend:
+    image: my-backend:dev
+    ports:
+      - "3000:3000"
+    environment:
+      MONGO_URL: mongodb://mongodb:27017
+    depends_on:
+      - mongodb
+
+volumes:
+  mongodb_data:
+
+
+This assumes my-backend:dev exists, the backend reads MONGO_URL, and it listens on port 3000 inside the container.
+Run the application
+# Start services
+docker compose up
+
+# Run in the background
+docker compose up -d
+
+# View service status
+docker compose ps
+
+# Follow logs
+docker compose logs -f
+
+# Stop and remove containers and the Compose network
+docker compose down
+
+
+Volumes and Compose
+This command removes Compose-managed named volumes too:
+docker compose down --volumes
+
+
+Use it only when you intend to reset the database data.
+What Compose provides
+- A shared default network.
+- Service-name DNS resolution.
+- Container creation and management.
+- Port mappings.
+- Environment configuration.
+- Volume mounting.
+Does depends_on mean the database is ready?
+Not necessarily. Basic depends_on controls startup order, but a database may still be initializing.
+A robust backend should retry temporary database connection failures or use suitable health checks and readiness conditions.
+
+16. Troubleshooting checklist
+Problem 1: Container exits immediately
+docker ps -a
+docker logs CONTAINER_NAME
+
+
+Check the logs and startup command. A container stops when its main process exits.
+Problem 2: Website doesn't open on localhost
+Check:
+1. Is the container running?
+2. Did you publish the port using -p?
+3. Is the application listening on the correct container port?
+4. Is it listening on 0.0.0.0?
+5. Is the host port already in use?
+Problem 3: Backend cannot connect to MongoDB
+Check:
+- Are both services on the same network?
+- Are you using the service name rather than localhost?
+- Are the environment variables correct?
+- Is the database ready?
+- Do the database logs show errors?
+Problem 4: Database data disappears
+Check whether you mounted a named volume at the correct database data directory.
+Problem 5: Docker builds are slow
+- Copy dependency manifests before source code.
+- Add a suitable .dockerignore.
+- Check which build steps are being cached.
+- Preserve build cache in CI where appropriate.
+
+17. Quick revision sheet
+Concept	One-line answer
+Docker	Platform for building and running containerized applications
+Container	Isolated runtime instance of an image
+Image	Packaged application template
+Dockerfile	Instructions for building an image
+Registry	Stores and distributes images
+Volume	Persistent data storage
+Network	Enables communication between containers
+Compose	Defines and manages multi-container applications
+-p	Maps host port to container port
+-e	Passes environment variables
+docker build	Builds an image
+docker run	Creates and starts a container
+docker logs	Displays container logs
+docker exec	Executes a command inside a running container
+docker push	Uploads an image to a registry
+docker pull	Downloads an image
+.dockerignore	Excludes files from the build context
+
+18. Interview questions
+Q1. Why do we need Docker?
+Docker packages applications with their runtime requirements, helping teams reproduce environments and simplify deployment.
+Q2. What is the difference between an image and a container?
+An image is the packaged template; a container is an instance created from it.
+Q3. What is a Dockerfile?
+A text file containing instructions used to build a Docker image.
+Q4. What does -p 8080:80 mean?
+Host port 8080 is mapped to container port 80.
+Q5. Why do we use volumes?
+To persist data independently of an individual container's writable layer.
+Q6. Why does localhost fail when connecting to another container?
+Because localhost refers to the current container. Containers should communicate using appropriate network hostnames on a shared network.
+Q7. What is Docker Compose?
+A tool for defining and running multi-container applications from a YAML configuration.
+Q8. Does EXPOSE publish a port?
+No. It documents the intended container port. Publishing requires -p or Compose ports.
+Q9. How does layer caching improve build performance?
+Docker can reuse unchanged build steps, avoiding unnecessary work.
+Q10. Why copy package.json before application source code?
+It allows dependency installation to be cached when only source code changes.
+Q11. Are containers always more secure than VMs?
+No. Their isolation boundaries differ, and security depends on configuration, runtime protections, privileges and workload requirements.
+Q12. Does docker compose down delete database volumes?
+Not by default. Adding --volumes can delete Compose-managed volumes and their data.
+
+19. Hands-on exercises
+Theory alone won't make you comfortable with Docker. Run these exercises in order.
+Practical checklist
+0/8 complete
+
+
+
+[ ] Run Nginx on port 8080 and inspect its logs.
+[ ] Write a Dockerfile for a Node.js application.
+[ ] Build an image and run it on port 3000.
+[ ] Create a named volume and verify MongoDB data survives container replacement.
+[ ] Create a custom Docker network and connect two containers.
+[ ] Write a Compose file for a backend and MongoDB.
+[ ] Change application source code and observe Docker layer caching.
+[ ] Push a version-tagged image to Docker Hub.
+
+Exercise 1: Run Nginx
+docker run -d --name nginx-lab -p 8080:80 nginx
+docker ps
+docker logs nginx-lab
+
+
+Open http://localhost:8080. Then stop and remove the container.
+Exercise 2: Build your own Node.js image
+Create a small Node.js server, write a Dockerfile and .dockerignore, then run:
+docker build -t node-lab:dev .
+docker run --rm -p 3000:3000 node-lab:dev
+
+
+Ensure the server listens on 0.0.0.0.
+Exercise 3: Test persistent storage
+Create a named volume, insert data into MongoDB, remove the container and create another container using the same volume. Verify that the data remains.
+Exercise 4: Build a multi-container application
+Create a backend and MongoDB service using Compose. Connect the backend through the MongoDB service name and persist database data with a named volume.
+Exercise 5: Test caching
+1. Build the image twice without changing anything.
+2. Change only the source code and rebuild.
+3. Change the dependency manifest and rebuild.
+4. Compare the build output to see which steps were reused.
+
+20. References
+- Uploaded source: Projects | 100xDevs — Docker End to End (21 of 22), 26 pages.
+- Docker documentation: Docker Docs
+- Docker Compose: Compose documentation
+- Docker Hub: Docker Hub
+- Source repository referenced in the uploaded material: 100xDevs Docker examples
