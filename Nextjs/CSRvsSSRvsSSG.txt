@@ -1,0 +1,335 @@
+Rendering in Web Development — Complete Notes
+1. Client-Side Rendering (CSR)
+What is CSR?
+Client-Side Rendering is a rendering technique in which the browser uses JavaScript to render the webpage's UI.
+Instead of receiving a complete page with all the content already rendered, the browser may initially receive a minimal HTML document, download JavaScript, execute it and populate the page.
+Example: A typical React application created using Vite.
+How CSR works
+1. Browser requests a page
+
+2. Server sends HTML and JS references
+The initial HTML may contain an almost-empty root element.
+
+3. Browser downloads JavaScript
+
+4. React renders the UI
+Components are rendered into the DOM.
+
+
+Let's see CSR in action
+Step 1: Initialise a React project
+npm create vite@latest
+
+
+Select React and your preferred language, such as TypeScript.
+Step 2: Install dependencies
+cd your-project
+npm install
+
+
+Step 3: Build the project
+npm run build
+
+
+Step 4: Serve the production build
+npx serve -s dist
+
+
+Open the local URL displayed in the terminal.
+Open DevTools → Network → select the document request → Response.
+You may find that the initial HTML contains something like:
+<div id="root"></div>
+<script type="module" src="/assets/index-....js"></script>
+
+
+The JavaScript bundle then runs and React populates the root element.
+Note that CSR does not mean the server sends no HTML at all. It means the primary UI rendering happens in the browser.
+Advantages of CSR
+- Makes building interactive applications straightforward.
+- UI updates can happen without full-page reloads.
+- Good for applications with complex client-side interactions.
+- Frontend and backend APIs can be developed separately.
+Disadvantages of CSR
+1. SEO considerations
+Search engines may need to execute JavaScript to discover the rendered content. Modern search engines can render JavaScript, so CSR does not automatically mean poor SEO, but it can add complexity.
+2. Initial loading delay
+Users may see a blank area, loader or skeleton while JavaScript downloads and executes.
+3. Waterfalling problem
+Suppose the application needs JavaScript before rendering the page, and then needs an API response before displaying meaningful content.
+The sequence may look like this:
+Request HTML
+    ↓
+Download JavaScript
+    ↓
+Execute JavaScript
+    ↓
+Fetch API data
+    ↓
+Render meaningful UI
+
+
+These dependent steps can increase the time before the user sees useful content.
+4. Client-side performance
+Large JavaScript bundles can increase download, parsing and execution time, particularly on slower devices.
+
+2. Server-Side Rendering (SSR)
+What is SSR?
+Server-Side Rendering is a technique in which the server renders a page into HTML for an incoming request.
+Instead of waiting for the browser to render the entire UI using JavaScript, the browser can receive HTML that already contains meaningful page content.
+Example: A dynamically rendered Next.js page.
+How SSR works
+1. Browser requests a page
+
+2. Server executes rendering logic
+It can fetch request-specific data.
+
+3. Server returns rendered HTML
+
+4. Browser displays content
+JavaScript can subsequently hydrate interactive components.
+
+
+Why SSR?
+1. SEO: the initial HTML already contains meaningful content.
+2. Faster content visibility: users can see rendered HTML before all client-side JavaScript finishes loading.
+3. Request-specific data: the server can render a page using the current user's session, cookies or request parameters.
+4. Reduced client-side rendering work: the initial page does not have to be entirely constructed in the browser.
+SSR doesn't automatically eliminate every waterfall. Server data dependencies can still delay rendering, and interactive components may still need JavaScript.
+Example in Next.js
+Create a page at app/profile/page.tsx:
+export const dynamic = "force-dynamic";
+
+export default async function ProfilePage() {
+  const response = await fetch(
+    "https://api.example.com/profile",
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch profile");
+  }
+
+  const profile = await response.json();
+
+  return (
+    <main>
+      <h1>{profile.name}</h1>
+      <p>{profile.email}</p>
+    </main>
+  );
+}
+
+
+This example explicitly opts into dynamic rendering and requests fresh data instead of using a cached fetch response. In a real application, the API would need to provide the profile data and appropriate authentication.
+Disadvantages of SSR
+- Rendering work can be required on every request.
+- Server CPU, memory and infrastructure costs can increase.
+- Response time depends on server rendering and data-fetching latency.
+- Caching requires care when responses contain user-specific information.
+Important: SSR pages can still be cached by suitable caches and CDNs when their response semantics allow it. It is incorrect to say SSR pages cannot be cached.
+
+3. Static Site Generation (SSG)
+What is SSG?
+Static Site Generation is a rendering technique in which HTML is generated ahead of time, typically during the production build.
+The generated HTML can then be reused across requests instead of rendering the page from scratch for every visitor.
+For example, a blog post can be generated at build time because its published content is usually the same for everyone.
+How SSG works
+1. Build the application
+Run npm run build
+
+2. Fetch data and render HTML
+The framework generates the page in advance.
+
+3. Prepare static output
+Generated pages and assets are ready to be served.
+
+4. Serve the page to visitors
+The output can be cached and distributed through a CDN.
+
+
+Why do we need SSG?
+Suppose you have 1,000 blog articles. Every visitor sees the same published content, and the articles change only occasionally.
+With SSR, the server may render an article for each request.
+With SSG, the pages can be generated ahead of time and reused. This reduces repeated rendering work and makes CDN caching especially effective.
+Advantages of SSG
+1. Performance: pre-generated HTML can be served quickly.
+2. Scalability: static content is efficient to distribute to large audiences.
+3. Lower rendering cost: no need to render the same page from scratch on every request.
+4. SEO: the initial HTML contains the page content.
+5. CDN compatibility: static files can be distributed geographically.
+6. Reliability: static pages can be served without performing a fresh database query for each request.
+Disadvantages of SSG
+- Content can become stale after the build.
+- Rebuilding a large site may take time.
+- Highly user-specific pages are usually not suitable for shared static HTML.
+- External data required during the build must be available at that time, unless the page is designed to fetch it later.
+
+4. SSG in Next.js — practical implementation
+Step 1: Create a Next.js project
+npx create-next-app@latest ssg-demo
+cd ssg-demo
+
+
+Create the file app/todos/page.tsx.
+Step 2: Fetch data and render the page
+type Todo = {
+  id: number;
+  title: string;
+  description: string;
+};
+
+export default async function TodosPage() {
+  const response = await fetch(
+    "https://sum-server.100xdevs.com/todos",
+    {
+      cache: "force-cache",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch todos");
+  }
+
+  const data = await response.json();
+  const todos: Todo[] = data.todos;
+
+  return (
+    <main>
+      <h1>Todos</h1>
+
+      {todos.map((todo) => (
+        <article key={todo.id}>
+          <h2>{todo.title}</h2>
+          <p>{todo.description}</p>
+        </article>
+      ))}
+    </main>
+  );
+}
+
+
+Here:
+- The component is an async Server Component.
+- The fetch opts into caching.
+- The component returns HTML containing the todo data.
+Important: a Server Component does not automatically guarantee SSG. Rendering depends on the route, framework version, configuration and dynamic APIs. Verify the production build output.
+Step 3: Build and start the production server
+npm run build
+npm run start
+
+
+Visit:
+http://localhost:3000/todos
+
+
+Open DevTools → Network → select the document request → Response.
+If the page was statically generated, the initial HTML should contain the rendered todo content.
+Also inspect the Next.js build output to confirm whether the route is static or dynamically rendered.
+
+5. SSG caching and revalidation
+A key issue with SSG is that data can change after a page has been generated.
+Suppose the todo API returns 20 todos during the build, but a new todo is added later. The generated page may continue to show the older result unless the data or page is refreshed.
+Next.js provides revalidation strategies to address this.
+A. Time-based revalidation
+const response = await fetch(
+  "https://sum-server.100xdevs.com/todos",
+  {
+    next: {
+      revalidate: 10,
+    },
+  }
+);
+
+
+This configures the fetch data for revalidation after 10 seconds.
+How it works conceptually:
+1. The data is fetched and cached.
+2. The configured interval passes.
+3. A subsequent request can trigger revalidation.
+4. The cached data and associated output can be refreshed.
+It does not necessarily mean the cache is deleted exactly every 10 seconds. The precise behavior depends on the framework's caching model.
+B. On-demand revalidation with tags
+Tags let you group cached fetch data by a logical resource.
+First, tag the fetch:
+const response = await fetch(
+  "https://sum-server.100xdevs.com/todos",
+  {
+    next: {
+      tags: ["todos"],
+    },
+  }
+);
+
+
+Then create a Server Action to revalidate the tag:
+"use server";
+
+import { revalidateTag } from "next/cache";
+
+export async function refreshTodos() {
+  revalidateTag("todos", "max");
+}
+
+
+In current Next.js APIs, "max" uses stale-while-revalidate behavior. Older versions may use a different function signature, so check the documentation for your installed version.
+After invalidation, the cached data can be refreshed on a subsequent request.
+C. Time-based vs on-demand revalidation
+Feature	Time-based	On-demand
+Trigger	Configured time interval	Explicit invalidation
+Typical use	Content changes periodically	Content changes after a known event
+Example	Refresh catalog data periodically	Refresh after publishing a blog post
+Main advantage	Automatic freshness policy	Targeted refresh
+Practical example: if an admin updates a product, the application can revalidate the relevant product tag rather than waiting for the time interval to pass.
+
+6. SSG vs SSR vs CSR — comparison
+Feature	CSR	SSR	SSG
+Main rendering location	Browser	Server	Build time
+Initial HTML	May have minimal content	Rendered content	Pre-generated content
+Server renders for each request?	Usually not for the UI	Yes, for dynamically rendered requests	No, for already-generated output
+Data freshness	Often fetched client-side	Can fetch request-specific data	Needs regeneration or revalidation
+CDN caching	Assets can be cached	Possible with suitable caching	Particularly well suited
+SEO	Needs consideration of JS rendering	Initial HTML helps	Initial HTML helps
+Typical use case	Interactive application	Personalized or dynamic pages	Blogs, documentation, marketing pages
+Remember: a modern Next.js application can combine all three approaches. They are not necessarily mutually exclusive across an entire application.
+
+7. Which rendering strategy should you choose?
+
+CSR
+Use when the application is highly interactive and much of its content can load after the initial page.
+Example: an interactive code editor or a client-side dashboard.
+
+
+
+
+SSR
+Use when the initial response needs request-specific or frequently changing data.
+Example: a personalized page that depends on the current user's session.
+
+
+
+
+SSG
+Use when the same content can be generated ahead of time and reused across visitors.
+Example: blogs, documentation and marketing pages.
+
+
+
+8. Important interview questions
+Q1. What is the primary difference between SSR and SSG?
+SSR renders a page on the server for a request, whereas SSG generates the page ahead of time, usually during the build.
+Q2. Why is SSG often faster?
+The HTML is already generated, so serving it doesn't require repeating the entire page-rendering process for every request.
+Q3. Is SSG suitable for personalized dashboards?
+Usually not for the personalized HTML itself, because shared static output cannot safely contain different private data for each user. A static shell can still fetch personalized data client-side.
+Q4. Can an SSG page contain interactive React components?
+Yes. The page can contain client-side JavaScript and interactive components even though its initial HTML was generated ahead of time.
+Q5. Does SSR mean a page cannot use a CDN?
+No. SSR responses can be cached when appropriate. Personalization and cache headers determine whether shared caching is safe.
+Q6. What is revalidation?
+Revalidation refreshes cached data or generated output according to a configured interval or explicit invalidation.
+Q7. Is every Next.js Server Component statically generated?
+No. Server Components execute on the server, but a route can be statically generated or dynamically rendered depending on its configuration and dependencies.
+Q8. What is the main trade-off of SSG?
+Efficient delivery versus freshness: generated content can become outdated until it is regenerated or revalidated.
